@@ -48,6 +48,7 @@ export function digChamber(state, colonyId, tileKey, chamberType) {
   if (def.populationCapBonus) {
     colony.populationCap += def.populationCapBonus;
   }
+  colony.lifetimeStats.chambersBuilt += 1;
 
   revealAroundChambers(state, colonyId);
   claimTerritoryAroundChambers(state, colonyId);

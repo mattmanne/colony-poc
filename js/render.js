@@ -1,7 +1,8 @@
 import { pixelForHex } from './hexgrid.js';
 import { totalPopulation } from './state.js';
 import { isAdjacentToOwnedChamber, canAffordChamber } from './colony.js';
-import { CHAMBER_TYPES, TRAIL_MAX_CAPACITY, TRAIL_UPGRADE_COST_MINERAL } from './constants.js';
+import { availableSoldiers } from './trails.js';
+import { CHAMBER_TYPES, TRAIL_MAX_CAPACITY, TRAIL_UPGRADE_COST_MINERAL, MAX_GARRISON } from './constants.js';
 
 const HEX_SIZE = 26;
 const OFFSET = 480;
@@ -115,14 +116,18 @@ function renderTrails(state) {
 function renderColonyPanel(state) {
   const player = state.colonies.player;
   const panel = document.getElementById('colony-panel');
+  const traitNote = player.traits.length > 0 ? `<p class="hint">Unlocked: ${player.traits.join(', ')}</p>` : '';
   panel.innerHTML = `
     <h3>Colony</h3>
     <p>Population: ${totalPopulation(player)} / ${player.populationCap}</p>
-    <p>Workers: ${player.population.worker} &nbsp; Foragers: ${player.population.forager}</p>
+    <p>Workers: ${player.population.worker} &nbsp; Foragers: ${player.population.forager} &nbsp; Soldiers: ${player.population.soldier}</p>
     <div class="actions">
       <button data-action="reassign" data-from="worker" data-to="forager" ${player.population.worker < 1 ? 'disabled' : ''}>Worker &rarr; Forager</button>
       <button data-action="reassign" data-from="forager" data-to="worker" ${player.population.forager < 1 ? 'disabled' : ''}>Forager &rarr; Worker</button>
+      <button data-action="reassign" data-from="worker" data-to="soldier" ${player.population.worker < 1 ? 'disabled' : ''}>Worker &rarr; Soldier</button>
+      <button data-action="reassign" data-from="soldier" data-to="worker" ${player.population.soldier < 1 ? 'disabled' : ''}>Soldier &rarr; Worker</button>
     </div>
+    ${traitNote}
   `;
 }
 
@@ -172,9 +177,13 @@ function renderTilePanel(state, ui) {
   if (tile.resourceNode) {
     const existingTrail = player.trails.find((t) => t.path[t.path.length - 1] === key);
     if (existingTrail) {
-      html += `<p>Your trail: capacity ${existingTrail.capacity}${existingTrail.contested ? ' — <span class="contested">CONTESTED</span>' : ''}</p>`;
+      html += `<p>Your trail: capacity ${existingTrail.capacity}, garrison ${existingTrail.garrison}/${MAX_GARRISON}${existingTrail.contested ? ' — <span class="contested">CONTESTED</span>' : ''}</p>`;
       if (existingTrail.capacity < TRAIL_MAX_CAPACITY) {
         html += `<button data-action="upgrade-trail" data-trail-id="${existingTrail.id}">Upgrade Capacity (${TRAIL_UPGRADE_COST_MINERAL} mineral)</button>`;
+      }
+      if (existingTrail.garrison < MAX_GARRISON) {
+        const canGarrison = availableSoldiers(state, 'player') >= 1;
+        html += `<button data-action="garrison" data-trail-id="${existingTrail.id}" ${canGarrison ? '' : 'disabled'}>Garrison +1 Soldier</button>`;
       }
     } else {
       html += '<button data-action="lay-trail">Lay Trail Here (1 forager)</button>';

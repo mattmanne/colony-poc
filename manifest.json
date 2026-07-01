@@ -1,0 +1,13 @@
+{
+  "name": "Colony",
+  "short_name": "Colony",
+  "description": "A turn-based ant colony logistics strategy game.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1b1712",
+  "theme_color": "#c98a2b",
+  "icons": [
+    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

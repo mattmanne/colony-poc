@@ -33,8 +33,40 @@ export const NODE_REGEN_RATE = { sugar: 3, protein: 2, mineral: 0 };
 export const TRAIL_BASE_CAPACITY = 1;
 export const TRAIL_MAX_CAPACITY = 3;
 export const TRAIL_UPGRADE_COST_MINERAL = 8;
+export const MAX_GARRISON = 2;
 
 export const POP_UPKEEP_SUGAR_PER_ANT = 0.5;
+export const POP_UPKEEP_FUNGUS_PER_ANT = 0.5;
 export const POP_GROWTH_PROTEIN_COST = 8;
 
 export const CONTESTED_LEAK_CHANCE = 0.5;
+export const RAID_COOLDOWN_CYCLES = 3;
+
+export const SAVE_VERSION = 2;
+
+export const MILESTONES = [
+  {
+    id: 'silo',
+    label: 'Harvested 300 resources — unlocked a Sugar Silo (+100 sugar storage)',
+    check: (colony) => colony.lifetimeStats.resourcesHarvested >= 300,
+    apply: (colony) => { colony.storageCap.sugar += 100; },
+  },
+  {
+    id: 'elite_soldier',
+    label: 'Won 3 battles — soldiers are now Elite (+1 attack)',
+    check: (colony) => colony.lifetimeStats.battlesWon >= 3,
+    apply: () => {},
+  },
+  {
+    id: 'tunnelers',
+    label: 'Built 5 chambers — efficient tunneling (+4 population cap)',
+    check: (colony) => colony.lifetimeStats.chambersBuilt >= 5,
+    apply: (colony) => { colony.populationCap += 4; },
+  },
+  {
+    id: 'waystations',
+    label: 'Sustained a long trail for 10 cycles — Waystations built (-1 cycle trail latency)',
+    check: (colony) => colony.lifetimeStats.longTrailCycles >= 10,
+    apply: () => {},
+  },
+];

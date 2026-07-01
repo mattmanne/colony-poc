@@ -13,6 +13,7 @@ export function runAiTurn(state, colonyId) {
     if (tryExpandToRichestNode(state, colonyId)) { ap--; continue; }
     if (tryUpgradeBottleneckedTrail(state, colonyId)) { ap--; continue; }
     if (tryDigChamber(state, colonyId)) { ap--; continue; }
+    if (tryTrainSoldiers(state, colonyId)) { ap--; continue; }
     if (tryGrowForagers(state, colonyId)) { ap--; continue; }
     break;
   }
@@ -47,9 +48,11 @@ function tryUpgradeBottleneckedTrail(state, colonyId) {
 function tryDigChamber(state, colonyId) {
   const colony = state.colonies[colonyId];
   const pop = totalPopulation(colony);
+  const hasFarm = colony.chambers.some((key) => state.map.tiles[key].chamber.type === 'farm');
 
   let chamberType = null;
   if (pop >= colony.populationCap - 2) chamberType = 'nursery';
+  else if (!hasFarm && colony.resources.mineral > 15) chamberType = 'farm';
   else if (colony.resources.mineral > 40) chamberType = 'storage';
   if (!chamberType) return false;
 
@@ -62,6 +65,14 @@ function tryDigChamber(state, colonyId) {
         return digChamber(state, colonyId, key, chamberType).ok;
       }
     }
+  }
+  return false;
+}
+
+function tryTrainSoldiers(state, colonyId) {
+  const colony = state.colonies[colonyId];
+  if (colony.population.worker > 4 && colony.population.soldier < 3 && colony.resources.fungus > 10) {
+    return reassignCaste(state, colonyId, 'worker', 'soldier', 1).ok;
   }
   return false;
 }

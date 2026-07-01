@@ -1,26 +1,28 @@
 import { generateMap, pickNestSites } from './mapgen.js';
 import { keyOf, neighbors, hexDistance } from './hexgrid.js';
 import {
-  MAP_RADIUS, AP_PER_CYCLE, VISION_RADIUS,
+  MAP_RADIUS, AP_PER_CYCLE, VISION_RADIUS, SAVE_VERSION,
   STARTING_RESOURCES, STARTING_STORAGE_CAP, STARTING_POPULATION, STARTING_POPULATION_CAP,
 } from './constants.js';
 
 export function getInitialState(seed) {
   const map = generateMap(seed, MAP_RADIUS);
-  const nestSites = pickNestSites(map, 2);
+  const nestSites = pickNestSites(map, 3);
 
   const colonies = {
     player: makeColony('player', true, nestSites[0]),
     rival_1: makeColony('rival_1', false, nestSites[1]),
+    rival_2: makeColony('rival_2', false, nestSites[2]),
   };
 
   const state = {
-    version: 1,
+    version: SAVE_VERSION,
     turn: 1,
     actionPointsRemaining: AP_PER_CYCLE,
     seed,
     map,
     colonies,
+    pendingBattles: [],
     log: [],
   };
 
@@ -34,7 +36,7 @@ export function getInitialState(seed) {
     claimTerritoryAroundChambers(state, colonyId);
   }
 
-  addLog(state, 'Cycle 1 begins. Two colonies stir in the soil.');
+  addLog(state, 'Cycle 1 begins. Three colonies stir in the soil.');
   return state;
 }
 
@@ -49,6 +51,8 @@ function makeColony(id, isPlayer, nestTile) {
     populationCap: STARTING_POPULATION_CAP,
     chambers: [],
     trails: [],
+    traits: [],
+    lifetimeStats: { resourcesHarvested: 0, battlesWon: 0, chambersBuilt: 0, longTrailCycles: 0 },
     aiState: isPlayer ? null : { raidCooldown: 0 },
   };
 }
