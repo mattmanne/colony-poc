@@ -27,7 +27,7 @@ Quick tips:
 
 ## Running it locally
 
-No build step, no dependencies — it's a static site.
+No build step and no installed dependencies — it's a static site. The one exception is a display font loaded from Google Fonts at runtime (see Architecture below); everything else is self-contained.
 
 ```bash
 cd colony
@@ -93,9 +93,13 @@ All game logic (`state.js` through `milestones.js`) is pure and DOM-free — it 
 
 **Why no emoji for game icons**: the app icon originally used an emoji glyph and it silently rendered as a near-invisible fallback in a headless-Chromium test environment — color-emoji font support isn't guaranteed everywhere. `js/icons.js` holds a small hand-drawn SVG set instead, so every glyph the player actually needs to read looks the same (and looks intentional) regardless of platform.
 
+**External dependency**: `index.html` loads "Alfa Slab One" from Google Fonts for headers/buttons — the one deliberate exception to "no dependencies," made for a distinct display-font look. It degrades gracefully to the system font stack if the font host is unreachable (verified with the font domains blocked: zero JS errors, fully playable).
+
+**Motion**: resource counters animate count-up/down instead of snapping (`animateNumber` in `render.js`), in-transit resource pips visibly flow along their trail between cycles (a persistent DOM element per pip, keyed by a stable id from `trails.js`, so a CSS transition can actually animate it — a full rebuild-every-render approach, used everywhere else in this codebase, can't animate anything), a newly-dug chamber gets a one-shot "pop," and battle hits get a shake/flash. A few render-only caches back these animations (which tiles have already popped, current displayed resource values, live pip elements) — they're cleared by `resetRenderState()` on "New Colony," since they're keyed by things like tile coordinates that a fresh map can reuse.
+
 ## Current scope (v1)
 
-Implemented: hex map with fog of war, pheromone trail logistics (capacity, latency, contested leaking, auto-routed or manually drawn), chamber digging (storage/farm/nursery), population castes (worker/forager/soldier) with sugar/fungus upkeep, two AI rivals that expand, defend, and raid, garrisoned-trail tactical battles (interactive for the player, auto-resolved for everyone else — including rival-vs-rival and the player raiding a rival), four milestone unlocks, PWA installability with generated icons.
+Implemented: hex map with fog of war, pheromone trail logistics (capacity, latency, contested leaking, auto-routed or manually drawn), chamber digging (storage/farm/nursery), population castes (worker/forager/soldier) with sugar/fungus upkeep, two AI rivals that expand, defend, and raid, garrisoned-trail tactical battles (interactive for the player, auto-resolved for everyone else — including rival-vs-rival and the player raiding a rival), four milestone unlocks, PWA installability with generated icons, a custom SVG icon set + CSS design system, and animation/feedback (counters, flowing trail pips, dig/hit effects — see Architecture below).
 
 Not implemented / known gaps:
 - Scouts exist in the data model but are unused (no way to train one, fog of war instead auto-reveals around chambers).
