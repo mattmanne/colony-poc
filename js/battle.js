@@ -205,6 +205,61 @@ function attackUnitInPlace(battle, attacker, target) {
   }
 }
 
+// Non-interactive defender behavior, used when the defending colony isn't
+// the player (an auto-resolved battle — see autoResolveBattle below). Mirrors
+// the attacker's aiActUnit but inverted: the forager runs from danger instead
+// of chasing an objective, and soldiers screen for it instead of hunting it.
+function defenderAiAct(battle, unit) {
+  const enemies = adjacentEnemies(battle, unit);
+  if (unit.type === 'soldier' && enemies.length > 0) {
+    attackUnit(battle, unit.id, enemies[0].id);
+    return;
+  }
+
+  const nearestAttacker = battle.units
+    .filter((u) => u.side === 'attacker' && u.alive)
+    .sort((a, b) => chebyshev(unit, a) - chebyshev(unit, b))[0];
+  if (!nearestAttacker) {
+    passTurn(battle);
+    return;
+  }
+
+  const moves = movesInRange(battle, unit);
+  let best = null;
+  // Foragers maximize distance from the nearest threat; soldiers close in on it.
+  let bestScore = unit.type === 'forager' ? -Infinity : Infinity;
+  for (const m of moves) {
+    const d = Math.max(Math.abs(nearestAttacker.x - m.x), Math.abs(nearestAttacker.y - m.y));
+    if (unit.type === 'forager' ? d > bestScore : d < bestScore) {
+      bestScore = d;
+      best = m;
+    }
+  }
+
+  if (best) moveUnit(battle, unit.id, best.x, best.y);
+  else passTurn(battle);
+}
+
+function chebyshev(a, b) {
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+// Plays out a battle where the defender isn't the player (rival-vs-rival, or
+// the player raiding a rival's garrisoned trail) start to finish, with no UI
+// involved, then applies the outcome. Returns the finished battle.
+export function autoResolveBattle(state, pending) {
+  const battle = createBattle(state, pending);
+  let guard = 0;
+  while (!battle.finished && guard < 20) {
+    const actor = getCurrentActor(battle);
+    if (!actor) break;
+    if (actor.side === 'defender') defenderAiAct(battle, actor);
+    guard += 1;
+  }
+  resolveBattleOutcome(state, battle);
+  return battle;
+}
+
 function checkBattleOver(battle) {
   const forager = battle.units.find((u) => u.type === 'forager');
   const attackersAlive = battle.units.filter((u) => u.side === 'attacker' && u.alive);
@@ -234,12 +289,15 @@ export function resolveBattleOutcome(state, battle) {
   clampGarrisons(defenderColony);
   clampGarrisons(attackerColony);
 
+  const defenderLabel = defenderColonyId === 'player' ? 'You' : 'A rival colony';
+  const attackerLabel = attackerColonyId === 'player' ? 'you' : 'a rival colony';
+
   if (battle.outcome === 'defender') {
     const trail = defenderColony.trails.find((t) => t.id === trailId);
     for (const pip of pips) deliverPip(state, defenderColony, trail || { path: [] }, pip);
     defenderColony.lifetimeStats.battlesWon += 1;
-    addLog(state, `You fought off the raid and saved your shipment! (${attackerDead} raider(s) killed, ${defenderDead} of your soldiers lost)`);
+    addLog(state, `${defenderLabel} fought off a raid by ${attackerLabel} and saved the shipment! (${attackerDead} raider(s) killed, ${defenderDead} defender(s) lost)`);
   } else {
-    addLog(state, `The raid succeeded — your shipment was lost. (${attackerDead} raider(s) killed, ${defenderDead} of your soldiers lost)`);
+    addLog(state, `${defenderLabel} was raided by ${attackerLabel} and lost the shipment. (${attackerDead} raider(s) killed, ${defenderDead} defender(s) lost)`);
   }
 }

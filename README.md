@@ -8,6 +8,23 @@ You run an ant colony competing with two AI rival colonies for the same ground a
 
 Turns ("cycles") only advance on an explicit "Advance Cycle" tap, with a 3 Action Point budget per cycle — so a session is "open app, spend up to 3 AP, advance, close" and comfortably fits in a couple of minutes.
 
+## How to play
+
+The in-app "?" button has the full rules and a tips list; this is the short version.
+
+- **Dig chambers** on pulsing-green tiles next to ones you own (Storage raises capacity, Fungus Farm converts sugar to fungus, Nursery raises population cap).
+- **Lay trails** to pulsing-blue resource nodes — tap "Auto-Route" for the fastest path, or "Draw Path Manually" to tap out the route yourself (useful for avoiding a rival's territory, at the cost of a longer, slower path).
+- **Reassign population castes** (Worker/Forager/Soldier) in the Colony panel. Foragers run trails, soldiers defend them; both cost upkeep (foragers eat sugar, soldiers eat fungus).
+- **Garrison a contested trail** with soldiers to defend it — an undefended contested trail just leaks resources, but a garrisoned one turns a raid into a tactical battle you play out directly.
+- Everything (digging, laying trails, garrisoning, reassigning) costs 1 of your 3 Action Points per cycle. Tap **Advance Cycle** when you're done to resolve the turn.
+
+Quick tips:
+1. Secure a sugar trail before chasing richer-looking protein/mineral nodes — sugar feeds every ant, and protein/mineral do nothing for a starving colony.
+2. Population only grows with a healthy sugar buffer — watch the trend, not just the current number, or you can out-grow your own income.
+3. A trail's capacity is capped by how many foragers you actually have free — upgrading capacity does nothing without foragers to staff it.
+4. Garrison your most valuable contested trail, not every one — soldiers are a limited, upkeep-costing resource.
+5. Build a Fungus Farm before training soldiers, or they'll desert for lack of food almost immediately.
+
 ## Running it locally
 
 No build step, no dependencies — it's a static site.
@@ -57,30 +74,29 @@ js/
   mapgen.js               Deterministic map + nest-site generation from a seed
   state.js                Canonical GameState shape, fog-of-war reveal, territory claiming
   colony.js               Chamber digging, caste reassignment
-  trails.js               Trail creation/capacity/garrison, per-cycle resource delivery
-  resources.js            Production (farms), population upkeep, growth, starvation
-  battle.js               Tactical 5x5 battle engine (pure logic, no DOM)
+  trails.js               Trail creation (auto-routed and manually-drawn)/capacity/garrison, per-cycle resource delivery
+  resources.js            Production (farms), population upkeep, growth (sugar-gated), starvation
+  battle.js               Tactical 5x5 battle engine (pure logic, no DOM) — interactive and auto-resolved
   ai.js                   Rival heuristic — reuses the same action functions/AP budget as the player
   cycle.js                Orchestrates one cycle: production → trails → AI → (battles) → milestones
   milestones.js           Checks/applies permanent unlocks
   save.js                 localStorage read/write, versioned
+  htmlEscape.js           XSS-hardening helper for save-derived strings reaching innerHTML
   render.js, render_battle.js   State → DOM (one-way; no state mutation from render code)
   input.js                DOM events → action functions → save → re-render
   main.js                 Bootstraps the app, registers the service worker
+tests/                    node --test suite — see Testing section above
 ```
 
 All game logic (`state.js` through `milestones.js`) is pure and DOM-free — it can be exercised directly in Node for testing without a browser. `render*.js`/`input.js` are the only DOM-touching modules.
 
 ## Current scope (v1)
 
-Implemented: hex map with fog of war, pheromone trail logistics (capacity, latency, contested leaking), chamber digging (storage/farm/nursery), population castes (worker/forager/soldier) with sugar/fungus upkeep, two AI rivals, garrisoned-trail tactical battles, four milestone unlocks, PWA installability.
+Implemented: hex map with fog of war, pheromone trail logistics (capacity, latency, contested leaking, auto-routed or manually drawn), chamber digging (storage/farm/nursery), population castes (worker/forager/soldier) with sugar/fungus upkeep, two AI rivals that expand, defend, and raid, garrisoned-trail tactical battles (interactive for the player, auto-resolved for everyone else — including rival-vs-rival and the player raiding a rival), four milestone unlocks, PWA installability with generated icons.
 
 Not implemented / known gaps:
-- No manual trail path drawing — trails auto-route via shortest path from the nest.
 - Scouts exist in the data model but are unused (no way to train one, fog of war instead auto-reveals around chambers).
-- AI rivals never garrison trails or fight back in tactical battles — they only ever lose resources to the probabilistic leak, never a battle. Battles only ever have the player as defender.
-- No cross-device save sync — a save is local to one browser's `localStorage`.
-- Economy balance is untuned past "does it function correctly" — long unattended play can lead to colony-wide starvation/extinction for all three colonies. Worth a dedicated balance pass before relying on long play sessions.
-- A freshly-spawned colony's starting vision (radius 2 around the nest) sometimes reveals zero resource nodes, since nodes are sparse (~1-in-7 tiles) relative to that small starting area — found while writing tests. Not fatal (digging further chambers gradually expands vision), but a rough first-turn experience on unlucky seeds.
+- No cross-device save sync — a save is local to one browser's `localStorage`. A JSON export/import ("save code") would be a cheap fix, deliberately deferred for now.
+- Economy balance has been tuned to avoid systemic collapse (verified via simulation — see `tests/balance.test.mjs`) but isn't fine-tuned for a specific difficulty curve; worst-case outcome is a subsistence-level colony (as few as 1 forager), not extinction.
 
 The fuller design rationale and a running list of proposed follow-ups (including security review notes) live in this project's Claude Code plan document, tracked outside this repo.

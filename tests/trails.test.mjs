@@ -2,10 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getInitialState } from '../js/state.js';
 import {
-  layTrail, upgradeTrailCapacity, assignGarrison, availableSoldiers, clampGarrisons, resolveTrailsForColony,
+  layTrail, layTrailManual, upgradeTrailCapacity, assignGarrison, availableSoldiers, clampGarrisons,
+  resolveTrailsForColony, nextHopCandidates,
 } from '../js/trails.js';
 import { reassignCaste } from '../js/colony.js';
 import { findDiscoveredResourceNode, getInitialStateWithVisibleNode } from './helpers.mjs';
+import { findPath } from '../js/hexgrid.js';
 import { MAX_GARRISON, TRAIL_MAX_CAPACITY } from '../js/constants.js';
 
 test('layTrail succeeds to a discovered resource node and fails on a duplicate', () => {
@@ -49,7 +51,8 @@ test('upgradeTrailCapacity increases capacity up to the cap and requires mineral
 
   player.resources.mineral = 100;
   player.population.forager = 10;
-  for (let i = 1; i < TRAIL_MAX_CAPACITY; i++) {
+  const stepsNeeded = TRAIL_MAX_CAPACITY - player.trails[0].capacity;
+  for (let i = 0; i < stepsNeeded; i++) {
     const res = upgradeTrailCapacity(state, 'player', trailId);
     assert.equal(res.ok, true);
   }
@@ -180,4 +183,71 @@ test('a trail crossing rival-owned territory is marked contested', () => {
   assert.equal(trail.contested, true);
 
   midTile.owner = originalOwner;
+});
+
+test('layTrailManual accepts a valid player-drawn path', () => {
+  const state = getInitialStateWithVisibleNode(33);
+  const player = state.colonies.player;
+  const nodeKey = findDiscoveredResourceNode(state, 'player');
+
+  const isBlocked = (key) => {
+    const t = state.map.tiles[key];
+    return !t || t.terrain === 'water' || !t.discoveredBy.player;
+  };
+  const path = findPath(player.nestTile, nodeKey, isBlocked);
+
+  const result = layTrailManual(state, 'player', path);
+  assert.equal(result.ok, true);
+  assert.deepEqual(player.trails[0].path, path);
+});
+
+test('layTrailManual rejects a path that does not start at an owned chamber', () => {
+  const state = getInitialStateWithVisibleNode(34);
+  const nodeKey = findDiscoveredResourceNode(state, 'player');
+  const result = layTrailManual(state, 'player', [nodeKey]);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /chamber/i);
+});
+
+test('layTrailManual rejects a path with non-adjacent tiles', () => {
+  const state = getInitialStateWithVisibleNode(35);
+  const player = state.colonies.player;
+  const nodeKey = findDiscoveredResourceNode(state, 'player');
+  const result = layTrailManual(state, 'player', [player.nestTile, nodeKey]);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /adjacent/i);
+});
+
+test('layTrailManual rejects a path crossing undiscovered ground', () => {
+  const state = getInitialStateWithVisibleNode(36);
+  const player = state.colonies.player;
+  const { q, r } = state.map.tiles[player.nestTile];
+  // Walk far enough in one direction to guarantee leaving discovered territory.
+  const farKey = `${q + 20},${r}`;
+  const result = layTrailManual(state, 'player', [player.nestTile, farKey]);
+  assert.equal(result.ok, false);
+});
+
+test('nextHopCandidates only offers discovered, walkable, unused neighbors', () => {
+  const state = getInitialStateWithVisibleNode(37);
+  const player = state.colonies.player;
+  const hops = nextHopCandidates(state, 'player', [player.nestTile]);
+
+  assert.ok(hops.length > 0, 'the nest should have at least one valid next hop');
+  for (const key of hops) {
+    const tile = state.map.tiles[key];
+    assert.equal(tile.terrain === 'water', false);
+    assert.equal(tile.discoveredBy.player, true);
+    assert.notEqual(key, player.nestTile);
+  }
+});
+
+test('nextHopCandidates excludes tiles already used in the path', () => {
+  const state = getInitialStateWithVisibleNode(38);
+  const player = state.colonies.player;
+  const firstHops = nextHopCandidates(state, 'player', [player.nestTile]);
+  const extended = [player.nestTile, firstHops[0]];
+  const secondHops = nextHopCandidates(state, 'player', extended);
+  assert.equal(secondHops.includes(player.nestTile), false);
+  assert.equal(secondHops.includes(firstHops[0]), false);
 });

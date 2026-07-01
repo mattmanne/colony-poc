@@ -1,4 +1,4 @@
-const CACHE_NAME = 'colony-v3';
+const CACHE_NAME = 'colony-v4';
 const APP_SHELL = [
   './',
   './index.html',
@@ -26,6 +26,8 @@ const APP_SHELL = [
   './js/constants.js',
   './js/htmlEscape.js',
   './assets/icons/icon.svg',
+  './assets/icons/icon-192.png',
+  './assets/icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <link rel="manifest" href="manifest.json" />
-<link rel="apple-touch-icon" href="assets/icons/icon.svg" />
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
 <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="css/base.css" />
 <link rel="stylesheet" href="css/map.css" />
@@ -33,7 +33,7 @@
   </div>
   <div id="hint-bar">
     Tap a <span class="hint-green">pulsing green</span> tile to dig, a <span class="hint-blue">pulsing blue</span> tile to lay a trail.
-    Actions appear below the map. Tap <b>?</b> for full rules.
+    Actions appear below the map. Tap <b>?</b> for full rules and strategy tips.
   </div>
   <div id="main">
     <div id="map-container">
@@ -55,15 +55,26 @@
     <p>You run an ant colony competing with two rival colonies for the same ground and food. Each <b>cycle</b> (turn) you get <b>3 Action Points</b>. Spend them, then tap <b>Advance Cycle</b> to resolve the turn.</p>
     <ul>
       <li><span class="hint-green">Pulsing green</span> tiles are empty ground next to one of your chambers — tap one to dig a Storage Chamber, Fungus Farm, or Nursery.</li>
-      <li><span class="hint-blue">Pulsing blue</span> tiles are resource nodes you've discovered but haven't connected — tap one to lay a pheromone trail from your nest.</li>
+      <li><span class="hint-blue">Pulsing blue</span> tiles are resource nodes you've discovered but haven't connected — tap "Auto-Route" for the fastest path from your nest, or "Draw Path Manually" to tap out the route tile-by-tile yourself (useful for routing around a rival's territory).</li>
       <li>Trails take a few cycles to deliver resources, and need spare <b>foragers</b> to run (see the Colony panel below the map to reassign Workers &harr; Foragers &harr; Soldiers).</li>
-      <li>Trails crossing a rival's territory turn <b style="color:#ffcc00">yellow (contested)</b>. An undefended contested trail can leak resources to raiders — but if you <b>garrison it with soldiers</b>, a raid instead triggers a tactical battle you play out directly: defend your forager and fight off the raiders.</li>
+      <li>Trails crossing a rival's territory turn <b style="color:#ffcc00">yellow (contested)</b>. An undefended contested trail can leak resources to raiders — but if you <b>garrison it with soldiers</b>, a raid instead triggers a tactical battle you play out directly: defend your forager and fight off the raiders. Rivals defend their own garrisoned trails too, and can raid yours or each other's.</li>
       <li>Fungus Farms turn sugar into fungus — soldiers and scouts eat fungus, workers and foragers eat sugar, so a standing defense costs upkeep.</li>
       <li>Hitting certain milestones (total resources harvested, battles won, chambers built, sustained long trails) permanently unlocks colony-wide bonuses.</li>
       <li>No fixed win condition — the goal is to keep your colony growing and your supply lines safe.</li>
     </ul>
     <p>Icons: 🐜 nest &nbsp; 📦 storage &nbsp; 🍄 farm &nbsp; 🥚 nursery &nbsp; 🍬 sugar &nbsp; 🥩 protein &nbsp; 💎 mineral</p>
-    <p>Tile borders: <span style="color:#4aa3ff">blue = you</span>, <span style="color:#ff5a5a">red = rival</span>, <span style="color:#ffcc00">yellow = contested</span>.</p>
+    <p>Tile borders: <span style="color:#4aa3ff">blue = you</span>, <span style="color:#ff5a5a">red</span> and <span style="color:#b06aff">purple = the two rivals</span>, <span style="color:#ffcc00">yellow = contested</span>.</p>
+
+    <h3>Tips</h3>
+    <ul>
+      <li><b>Secure a sugar trail first, before anything richer-looking.</b> Sugar feeds every ant — protein and mineral are useless to a starving colony. If sugar ever dips low, fix that before expanding further.</li>
+      <li><b>Don't overgrow your economy.</b> Population only grows when you have a healthy sugar buffer, but a colony can still out-grow its income if you rush protein-fueled growth — watch your sugar trend, not just the current number.</li>
+      <li><b>A trail's capacity needs foragers to match.</b> Upgrading capacity or laying new trails does nothing if you don't have spare foragers to run them — check the Colony panel before committing.</li>
+      <li><b>Garrison your most valuable contested trail, not all of them.</b> Garrisoning costs soldiers you could otherwise use elsewhere, and soldiers eat fungus — defend what actually matters.</li>
+      <li><b>Losing a battle only costs that shipment and the units in it</b> — a lost battle isn't a lost game. Retreating your forager (hold position away from raiders) can save the ant even if the cargo is lost.</li>
+      <li><b>Manual path drawing is for routing around danger</b>, not efficiency — a longer path around a rival's territory avoids contested-trail leaks, at the cost of slower delivery (latency scales with path length).</li>
+      <li><b>Build a Fungus Farm before training soldiers</b> — soldiers desert quickly without fungus income, and a deserted soldier's garrison slot doesn't come back on its own.</li>
+    </ul>
     <button id="help-close-btn">Got it</button>
   </div>
 </div>

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { getInitialState } from '../js/state.js';
 import { runAiTurn } from '../js/ai.js';
+import { MAX_GARRISON } from '../js/constants.js';
 
 test('runAiTurn does not throw and never leaves impossible negative state', () => {
   const state = getInitialState(90);
@@ -34,4 +35,33 @@ test('runAiTurn never digs a chamber on a resource-node tile', () => {
   for (const key of rival.chambers) {
     assert.equal(state.map.tiles[key].resourceNode, null);
   }
+});
+
+test('the AI garrisons a contested trail once it has spare soldiers', () => {
+  const state = getInitialState(93);
+  const rival = state.colonies.rival_1;
+  rival.trails.push({
+    id: 'contested-trail', garrison: 0, capacity: 1, contested: true,
+    path: [rival.nestTile], inTransit: [],
+  });
+  rival.population.soldier = 2;
+  rival.population.worker = 0; // force garrisoning to be the only useful action available
+
+  runAiTurn(state, 'rival_1');
+
+  assert.ok(rival.trails[0].garrison > 0, 'AI should garrison a contested trail when it has spare soldiers');
+});
+
+test('the AI never garrisons past MAX_GARRISON', () => {
+  const state = getInitialState(94);
+  const rival = state.colonies.rival_1;
+  rival.trails.push({
+    id: 'contested-trail', garrison: 0, capacity: 1, contested: true,
+    path: [rival.nestTile], inTransit: [],
+  });
+  rival.population.soldier = 10;
+
+  for (let i = 0; i < 10; i++) runAiTurn(state, 'rival_1');
+
+  assert.ok(rival.trails[0].garrison <= MAX_GARRISON, 'garrison should never exceed MAX_GARRISON');
 });

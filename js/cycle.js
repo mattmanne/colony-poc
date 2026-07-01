@@ -2,6 +2,7 @@ import { addLog } from './state.js';
 import { resolveTrailsForColony } from './trails.js';
 import { resolveProduction } from './resources.js';
 import { runAiTurn } from './ai.js';
+import { autoResolveBattle } from './battle.js';
 import { checkMilestones } from './milestones.js';
 import { AP_PER_CYCLE } from './constants.js';
 
@@ -13,9 +14,8 @@ const RIVAL_IDS = ['rival_1', 'rival_2'];
 export function beginAdvanceCycle(state) {
   state.pendingBattles = [];
 
-  for (const rivalId of RIVAL_IDS) {
-    const aiState = state.colonies[rivalId].aiState;
-    aiState.raidCooldown = Math.max(0, aiState.raidCooldown - 1);
+  for (const colony of Object.values(state.colonies)) {
+    colony.raidCooldown = Math.max(0, colony.raidCooldown - 1);
   }
 
   for (const colonyId of Object.keys(state.colonies)) {
@@ -24,6 +24,16 @@ export function beginAdvanceCycle(state) {
   }
 
   for (const rivalId of RIVAL_IDS) runAiTurn(state, rivalId);
+
+  // Any colony can now defend a garrisoned trail, but only the player's
+  // defense is interactive — everyone else's plays out automatically here so
+  // it never blocks the cycle from finishing.
+  const interactive = [];
+  for (const pending of state.pendingBattles) {
+    if (pending.defenderColonyId === 'player') interactive.push(pending);
+    else autoResolveBattle(state, pending);
+  }
+  state.pendingBattles = interactive;
 
   return state.pendingBattles.length > 0;
 }

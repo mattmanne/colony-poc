@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { getInitialState } from '../js/state.js';
 import {
   createBattle, getCurrentActor, movesInRange, adjacentEnemies, moveUnit, attackUnit, passTurn, resolveBattleOutcome,
+  autoResolveBattle,
 } from '../js/battle.js';
 
 function makePending(state, garrison, attackerSoldiers) {
@@ -171,4 +172,58 @@ test('resolveBattleOutcome does not deliver pips on an attacker victory', () => 
   const sugarBefore = player.resources.sugar;
   resolveBattleOutcome(state, battle);
   assert.equal(player.resources.sugar, sugarBefore);
+});
+
+test('autoResolveBattle plays a rival defending against the player start to finish', () => {
+  const state = getInitialState(58);
+  const rival = state.colonies.rival_1;
+  rival.trails.push({ id: 'rt', garrison: 2, capacity: 1, contested: true, path: ['x'] });
+  rival.population.soldier = 2;
+  state.colonies.player.population.soldier = 2;
+
+  const pending = {
+    trailId: 'rt', defenderColonyId: 'rival_1', attackerColonyId: 'player',
+    pips: [{ resourceType: 'sugar', amount: 15 }],
+  };
+  const before = rival.resources.sugar;
+  const battle = autoResolveBattle(state, pending);
+
+  assert.equal(battle.finished, true);
+  assert.ok(['defender', 'attacker'].includes(battle.outcome));
+  if (battle.outcome === 'defender') assert.equal(rival.resources.sugar, before + 15);
+  const totalGarrisoned = rival.trails.reduce((sum, t) => sum + t.garrison, 0);
+  assert.ok(totalGarrisoned <= rival.population.soldier, 'garrison must be reconciled after casualties');
+});
+
+test('autoResolveBattle handles a rival-vs-rival skirmish (neither side is the player)', () => {
+  const state = getInitialState(59);
+  const r1 = state.colonies.rival_1;
+  const r2 = state.colonies.rival_2;
+  r1.trails.push({ id: 'rt', garrison: 1, capacity: 1, contested: true, path: ['x'] });
+  r1.population.soldier = 1;
+  r2.population.soldier = 2;
+
+  const pending = {
+    trailId: 'rt', defenderColonyId: 'rival_1', attackerColonyId: 'rival_2',
+    pips: [{ resourceType: 'mineral', amount: 10 }],
+  };
+  const battle = autoResolveBattle(state, pending);
+
+  assert.equal(battle.finished, true);
+  assert.ok(['defender', 'attacker'].includes(battle.outcome));
+  assert.match(state.log[0].text, /rival colony/i);
+});
+
+test('autoResolveBattle never runs away — it terminates within the beat budget', () => {
+  const state = getInitialState(60);
+  const rival = state.colonies.rival_1;
+  rival.trails.push({ id: 'rt', garrison: 2, capacity: 1, contested: true, path: ['x'] });
+  rival.population.soldier = 2;
+  state.colonies.player.population.soldier = 3;
+
+  const pending = {
+    trailId: 'rt', defenderColonyId: 'rival_1', attackerColonyId: 'player',
+    pips: [{ resourceType: 'sugar', amount: 5 }],
+  };
+  assert.doesNotThrow(() => autoResolveBattle(state, pending));
 });

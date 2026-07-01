@@ -1,4 +1,6 @@
-import { findPath } from './hexgrid.js';
+import {
+  findPath, parseKey, hexDistance, neighbors, keyOf,
+} from './hexgrid.js';
 import {
   TRAIL_BASE_CAPACITY, TRAIL_MAX_CAPACITY, TRAIL_UPGRADE_COST_MINERAL, MAX_GARRISON,
   NODE_REGEN_RATE, CONTESTED_LEAK_CHANCE, RAID_COOLDOWN_CYCLES,
@@ -8,29 +10,42 @@ import { availableForagers } from './colony.js';
 
 let trailCounter = 0;
 
-export function layTrail(state, colonyId, sourceChamberKey, resourceNodeKey) {
+// Shared by the auto-routed (layTrail) and player-drawn (layTrailManual)
+// entry points — both end up with a concrete tile-by-tile path; this is what
+// actually validates it and creates the trail.
+function createTrailFromPath(state, colonyId, path) {
   const colony = state.colonies[colonyId];
-  const destTile = state.map.tiles[resourceNodeKey];
+  if (!path || path.length === 0) return { ok: false, reason: 'Invalid path.' };
 
-  if (!destTile || !destTile.resourceNode) return { ok: false, reason: 'No resource node there.' };
-  if (colony.trails.some((t) => t.path[t.path.length - 1] === resourceNodeKey)) {
+  const sourceTile = state.map.tiles[path[0]];
+  if (!sourceTile || !sourceTile.chamber || sourceTile.chamber.ownerColonyId !== colonyId) {
+    return { ok: false, reason: 'A trail must start at one of your chambers.' };
+  }
+
+  const destKey = path[path.length - 1];
+  const destTile = state.map.tiles[destKey];
+  if (!destTile || !destTile.resourceNode) return { ok: false, reason: 'A trail must end at a resource node.' };
+  if (colony.trails.some((t) => t.path[t.path.length - 1] === destKey)) {
     return { ok: false, reason: 'A trail already runs to that node.' };
   }
   if (availableForagers(state, colonyId) < TRAIL_BASE_CAPACITY) {
     return { ok: false, reason: 'No spare foragers to walk a new trail.' };
   }
 
-  const isBlocked = (key) => {
-    const t = state.map.tiles[key];
-    return !t || t.terrain === 'water' || !t.discoveredBy[colonyId];
-  };
-  const path = findPath(sourceChamberKey, resourceNodeKey, isBlocked);
-  if (!path) return { ok: false, reason: 'No known path to that node.' };
+  for (let i = 0; i < path.length; i++) {
+    const tile = state.map.tiles[path[i]];
+    if (!tile || tile.terrain === 'water' || !tile.discoveredBy[colonyId]) {
+      return { ok: false, reason: 'Path crosses unknown or impassable ground.' };
+    }
+    if (i > 0 && hexDistance(parseKey(path[i - 1]), parseKey(path[i])) !== 1) {
+      return { ok: false, reason: 'Path tiles must be adjacent to each other.' };
+    }
+  }
 
   const trail = {
     id: `trail_${colonyId}_${trailCounter++}`,
     ownerColonyId: colonyId,
-    path,
+    path: [...path],
     capacity: TRAIL_BASE_CAPACITY,
     garrison: 0,
     contested: false,
@@ -39,6 +54,42 @@ export function layTrail(state, colonyId, sourceChamberKey, resourceNodeKey) {
   colony.trails.push(trail);
   addLog(state, `${colonyId === 'player' ? 'You' : 'A rival colony'} laid a trail to a ${destTile.resourceNode.type} node (${path.length} tiles).`);
   return { ok: true, trail };
+}
+
+export function layTrail(state, colonyId, sourceChamberKey, resourceNodeKey) {
+  const destTile = state.map.tiles[resourceNodeKey];
+  if (!destTile || !destTile.resourceNode) return { ok: false, reason: 'No resource node there.' };
+
+  const isBlocked = (key) => {
+    const t = state.map.tiles[key];
+    return !t || t.terrain === 'water' || !t.discoveredBy[colonyId];
+  };
+  const path = findPath(sourceChamberKey, resourceNodeKey, isBlocked);
+  if (!path) return { ok: false, reason: 'No known path to that node.' };
+
+  return createTrailFromPath(state, colonyId, path);
+}
+
+// Player-drawn alternative to layTrail's auto-routing — `path` is the exact
+// tile-by-tile sequence the player tapped out, letting them route around a
+// rival's territory or through a specific corridor instead of always taking
+// the shortest path.
+export function layTrailManual(state, colonyId, path) {
+  return createTrailFromPath(state, colonyId, path);
+}
+
+// Which tiles can legally extend a trail being drawn one tap at a time —
+// neighbors of the path's current end that are discovered, walkable, and not
+// already part of the path (no doubling back on yourself).
+export function nextHopCandidates(state, colonyId, path) {
+  const { q, r } = parseKey(path[path.length - 1]);
+  const used = new Set(path);
+  return neighbors(q, r)
+    .map((n) => keyOf(n.q, n.r))
+    .filter((key) => {
+      const tile = state.map.tiles[key];
+      return tile && tile.terrain !== 'water' && tile.discoveredBy[colonyId] && !used.has(key);
+    });
 }
 
 export function upgradeTrailCapacity(state, colonyId, trailId) {
@@ -151,14 +202,17 @@ export function resolveTrailsForColony(state, colonyId) {
     if (trail.contested) {
       const contesterId = findContestingColonyId(state, trail);
       const contester = contesterId && state.colonies[contesterId];
-      const canBattle = colonyId === 'player'
-        && trail.garrison > 0
+      // Any colony can defend a garrisoned trail now — the player defending
+      // is played out interactively, anyone else is auto-resolved (see
+      // cycle.js). Either way, whoever holds the trail needs a garrison, and
+      // whoever's contesting it needs spare soldiers and an expired cooldown.
+      const canBattle = trail.garrison > 0
         && contester
         && contester.population.soldier > 0
-        && contester.aiState.raidCooldown <= 0;
+        && contester.raidCooldown <= 0;
 
       if (canBattle) {
-        contester.aiState.raidCooldown = RAID_COOLDOWN_CYCLES;
+        contester.raidCooldown = RAID_COOLDOWN_CYCLES;
         state.pendingBattles.push({
           trailId: trail.id,
           defenderColonyId: colonyId,

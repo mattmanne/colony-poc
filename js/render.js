@@ -1,7 +1,7 @@
 import { pixelForHex } from './hexgrid.js';
 import { totalPopulation } from './state.js';
 import { isAdjacentToOwnedChamber, canAffordChamber } from './colony.js';
-import { availableSoldiers } from './trails.js';
+import { availableSoldiers, nextHopCandidates } from './trails.js';
 import { CHAMBER_TYPES, TRAIL_MAX_CAPACITY, TRAIL_UPGRADE_COST_MINERAL, MAX_GARRISON } from './constants.js';
 import { escapeHtml } from './htmlEscape.js';
 
@@ -39,7 +39,8 @@ function renderTopbar(state) {
 function ownerClass(owner) {
   if (owner === 'player') return 'owner-player';
   if (owner === 'contested') return 'owner-contested';
-  if (owner) return 'owner-rival';
+  if (owner === 'rival_1') return 'owner-rival-1';
+  if (owner === 'rival_2') return 'owner-rival-2';
   return '';
 }
 
@@ -47,6 +48,9 @@ function renderMap(state, ui) {
   const mapEl = document.getElementById('map');
   mapEl.innerHTML = '';
   const player = state.colonies.player;
+  const drawing = ui.drawingTrail;
+  const pathSet = drawing ? new Set(drawing.path) : null;
+  const nextHops = drawing ? new Set(nextHopCandidates(state, 'player', drawing.path)) : null;
 
   for (const key of Object.keys(state.map.tiles)) {
     const tile = state.map.tiles[key];
@@ -70,12 +74,17 @@ function renderMap(state, ui) {
         div.textContent = RESOURCE_ICONS[tile.resourceNode.type];
       }
 
-      const diggable = !tile.chamber && !tile.resourceNode && tile.terrain !== 'water'
-        && isAdjacentToOwnedChamber(state, 'player', key);
-      if (diggable) div.classList.add('hex-diggable');
+      if (drawing) {
+        if (pathSet.has(key)) div.classList.add('hex-path-chosen');
+        else if (nextHops.has(key)) div.classList.add('hex-path-next');
+      } else {
+        const diggable = !tile.chamber && !tile.resourceNode && tile.terrain !== 'water'
+          && isAdjacentToOwnedChamber(state, 'player', key);
+        if (diggable) div.classList.add('hex-diggable');
 
-      if (tile.resourceNode && !player.trails.some((t) => t.path[t.path.length - 1] === key)) {
-        div.classList.add('hex-linkable');
+        if (tile.resourceNode && !player.trails.some((t) => t.path[t.path.length - 1] === key)) {
+          div.classList.add('hex-linkable');
+        }
       }
     }
 
@@ -105,7 +114,7 @@ function renderTrails(state) {
 
         const { x, y } = pixelForHex(tile.q, tile.r, HEX_SIZE);
         const dot = document.createElement('div');
-        const colorClass = trail.contested ? 'trail-contested' : (colonyId === 'player' ? 'trail-player' : 'trail-rival');
+        const colorClass = trail.contested ? 'trail-contested' : `trail-${colonyId === 'player' ? 'player' : colonyId}`;
         dot.className = `trail-dot ${colorClass}`;
         dot.style.left = `${x + OFFSET + HEX_SIZE - 4}px`;
         dot.style.top = `${y + OFFSET + HEX_SIZE - 4}px`;
@@ -143,6 +152,12 @@ function formatCost(cost) {
 
 function renderTilePanel(state, ui) {
   const panel = document.getElementById('tile-panel');
+
+  if (ui.drawingTrail) {
+    renderDrawingPanel(state, ui, panel);
+    return;
+  }
+
   const key = ui.selectedTile;
 
   if (!key) {
@@ -191,11 +206,32 @@ function renderTilePanel(state, ui) {
         html += `<button data-action="garrison" data-trail-id="${escapeHtml(existingTrail.id)}" ${canGarrison ? '' : 'disabled'}>Garrison +1 Soldier</button>`;
       }
     } else {
-      html += '<button data-action="lay-trail">Lay Trail Here (1 forager)</button>';
+      html += '<button data-action="lay-trail">Auto-Route Trail Here (1 forager)</button>';
+      html += '<button data-action="start-draw-trail">Draw Path Manually&hellip;</button>';
     }
   }
 
   html += '</div>';
+  panel.innerHTML = html;
+}
+
+function renderDrawingPanel(state, ui, panel) {
+  const { path, targetNodeKey } = ui.drawingTrail;
+  const targetTile = state.map.tiles[targetNodeKey];
+  const nextHops = nextHopCandidates(state, 'player', path);
+  const canReachTarget = nextHops.includes(targetNodeKey);
+
+  let html = '<h3>Drawing a Trail</h3>';
+  html += `<p>${path.length} tile(s) so far, heading to a ${escapeHtml(targetTile.resourceNode.type)} node.</p>`;
+  html += canReachTarget
+    ? '<p class="hint">Tap the target node to finish, or keep extending the path.</p>'
+    : '<p class="hint">Tap a <span class="hint-blue">pulsing blue</span> tile to extend the path.</p>';
+
+  html += '<div class="actions">';
+  html += '<button data-action="cancel-draw-trail">Cancel</button>';
+  if (path.length > 1) html += '<button data-action="undo-draw-trail">Undo Last Tile</button>';
+  html += '</div>';
+
   panel.innerHTML = html;
 }
 

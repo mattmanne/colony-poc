@@ -53,7 +53,11 @@ function makeColony(id, isPlayer, nestTile) {
     trails: [],
     traits: [],
     lifetimeStats: { resourcesHarvested: 0, battlesWon: 0, chambersBuilt: 0, longTrailCycles: 0 },
-    aiState: isPlayer ? null : { raidCooldown: 0 },
+    // Any colony can now be a raid's attacker (garrisoned trails can be
+    // defended by rivals too, and the player can be the one contesting a
+    // rival's trail via territory overlap), so the cooldown that prevents
+    // being raided every single cycle applies to everyone, not just rivals.
+    raidCooldown: 0,
   };
 }
 

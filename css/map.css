@@ -29,6 +29,11 @@
   justify-content: center;
   font-size: 18px;
   cursor: pointer;
+  /* Hexes tessellate edge-to-edge by position, so same-state borders on
+     adjacent tiles visually merge into one continuous bar. Scaling each hex
+     down slightly (around its own center, so the grid layout math is
+     untouched) opens a small gap so each tile reads as a distinct border. */
+  transform: scale(0.92);
 }
 
 .hex-fog {
@@ -47,8 +52,12 @@
   border-color: #4aa3ff;
 }
 
-.owner-rival {
+.owner-rival-1 {
   border-color: #ff5a5a;
+}
+
+.owner-rival-2 {
+  border-color: #b06aff;
 }
 
 .owner-contested {
@@ -80,6 +89,16 @@
   z-index: 1;
 }
 
+.hex-path-chosen {
+  border-color: #ffb300;
+  z-index: 1;
+}
+
+.hex-path-next {
+  animation: pulse-blue 1.4s infinite;
+  z-index: 1;
+}
+
 .trail-dot {
   position: absolute;
   width: 8px;
@@ -91,8 +110,12 @@
   background: #4aa3ff;
 }
 
-.trail-rival {
+.trail-rival_1 {
   background: #ff5a5a;
+}
+
+.trail-rival_2 {
+  background: #b06aff;
 }
 
 .trail-contested {

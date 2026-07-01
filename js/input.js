@@ -1,5 +1,7 @@
 import { digChamber, reassignCaste } from './colony.js';
-import { layTrail, upgradeTrailCapacity, assignGarrison } from './trails.js';
+import {
+  layTrail, layTrailManual, upgradeTrailCapacity, assignGarrison, nextHopCandidates,
+} from './trails.js';
 import { beginAdvanceCycle, finishAdvanceCycle } from './cycle.js';
 import { createBattle, getCurrentActor, moveUnit, attackUnit, passTurn, resolveBattleOutcome } from './battle.js';
 import { saveGame, clearSave } from './save.js';
@@ -18,7 +20,14 @@ export function initInput(store) {
   document.getElementById('map').addEventListener('click', (e) => {
     const div = e.target.closest('.hex');
     if (!div) return;
-    store.ui.selectedTile = div.dataset.key;
+    const key = div.dataset.key;
+
+    if (store.ui.drawingTrail) {
+      handleDrawingTap(store, key);
+      return;
+    }
+
+    store.ui.selectedTile = key;
     render(store);
   });
 
@@ -53,6 +62,7 @@ export function initInput(store) {
     store.state = getInitialState(Date.now());
     store.battle = null;
     store.ui.selectedTile = null;
+    store.ui.drawingTrail = null;
     document.getElementById('battle-overlay').classList.add('hidden');
     saveGame(store.state);
     render(store);
@@ -63,6 +73,25 @@ export function initInput(store) {
 function handleAction(store, btn) {
   const state = store.state;
   const action = btn.dataset.action;
+
+  // Path-drawing navigation is free — only the final committed trail costs AP.
+  if (action === 'start-draw-trail') {
+    store.ui.drawingTrail = { targetNodeKey: store.ui.selectedTile, path: [state.colonies.player.nestTile] };
+    render(store);
+    return;
+  }
+  if (action === 'cancel-draw-trail') {
+    store.ui.drawingTrail = null;
+    render(store);
+    return;
+  }
+  if (action === 'undo-draw-trail') {
+    if (store.ui.drawingTrail && store.ui.drawingTrail.path.length > 1) {
+      store.ui.drawingTrail.path.pop();
+      render(store);
+    }
+    return;
+  }
 
   if (state.actionPointsRemaining <= 0) {
     showMessage('No action points left this cycle.');
@@ -90,6 +119,41 @@ function handleAction(store, btn) {
   }
 
   state.actionPointsRemaining -= 1;
+  saveGame(state);
+  render(store);
+}
+
+function handleDrawingTap(store, key) {
+  const state = store.state;
+  const drawing = store.ui.drawingTrail;
+  const candidates = nextHopCandidates(state, 'player', drawing.path);
+  if (!candidates.includes(key)) return;
+
+  drawing.path.push(key);
+
+  if (key !== drawing.targetNodeKey) {
+    render(store);
+    return;
+  }
+
+  if (state.actionPointsRemaining <= 0) {
+    showMessage('No action points left this cycle.');
+    drawing.path.pop();
+    render(store);
+    return;
+  }
+
+  const result = layTrailManual(state, 'player', drawing.path);
+  if (!result.ok) {
+    showMessage(result.reason);
+    drawing.path.pop();
+    render(store);
+    return;
+  }
+
+  state.actionPointsRemaining -= 1;
+  store.ui.drawingTrail = null;
+  store.ui.selectedTile = null;
   saveGame(state);
   render(store);
 }

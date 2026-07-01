@@ -49,12 +49,13 @@ test('regression: workers starve first when sugar is insufficient, then foragers
   const player = state.colonies.player;
   player.resources.sugar = 0;
   player.resources.protein = 0;
-  player.population = { worker: 1, forager: 10, soldier: 0, scout: 0 };
+  // A large forager count guarantees the shortfall comfortably exceeds what
+  // the single worker alone can absorb, regardless of the current upkeep rate.
+  player.population = { worker: 1, forager: 50, soldier: 0, scout: 0 };
 
-  // Big enough shortfall to exhaust the single worker and spill into foragers.
   resolveProduction(state, 'player');
   assert.equal(player.population.worker, 0, 'the lone worker should starve first');
-  assert.ok(player.population.forager < 10, 'shortfall should extend to foragers once workers are gone');
+  assert.ok(player.population.forager < 50, 'shortfall should extend to foragers once workers are gone');
 });
 
 test('a colony with only foragers is no longer immune to starvation (pre-fix regression)', () => {
