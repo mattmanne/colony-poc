@@ -1,6 +1,7 @@
 import { keyOf, neighbors } from './hexgrid.js';
 import { CHAMBER_TYPES } from './constants.js';
 import { addLog, revealAroundChambers, claimTerritoryAroundChambers } from './state.js';
+import { clampGarrisons } from './trails.js';
 
 const CASTES = ['worker', 'forager', 'soldier', 'scout'];
 
@@ -24,6 +25,7 @@ export function digChamber(state, colonyId, tileKey, chamberType) {
 
   if (!tile || tile.chamber) return { ok: false, reason: 'That tile already has a chamber.' };
   if (tile.terrain === 'water') return { ok: false, reason: "Can't dig into water." };
+  if (tile.resourceNode) return { ok: false, reason: "Can't dig into a resource node." };
   if (!isAdjacentToOwnedChamber(state, colonyId, tileKey)) {
     return { ok: false, reason: 'Must dig adjacent to an existing chamber.' };
   }
@@ -68,6 +70,7 @@ export function reassignCaste(state, colonyId, fromCaste, toCaste, amount) {
 
   colony.population[fromCaste] -= amount;
   colony.population[toCaste] = (colony.population[toCaste] || 0) + amount;
+  if (fromCaste === 'soldier') clampGarrisons(colony);
   addLog(state, `${colonyId === 'player' ? 'You' : 'A rival colony'} reassigned ${amount} ${fromCaste}(s) to ${toCaste}.`);
   return { ok: true };
 }

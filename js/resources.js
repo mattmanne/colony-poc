@@ -1,4 +1,5 @@
 import { addLog, totalPopulation } from './state.js';
+import { clampGarrisons } from './trails.js';
 import {
   CHAMBER_TYPES, POP_UPKEEP_SUGAR_PER_ANT, POP_UPKEEP_FUNGUS_PER_ANT, POP_GROWTH_PROTEIN_COST,
 } from './constants.js';
@@ -30,10 +31,22 @@ export function resolveProduction(state, colonyId) {
   } else {
     const shortfall = sugarUpkeep - colony.resources.sugar;
     colony.resources.sugar = 0;
-    const starved = Math.min(colony.population.worker, Math.ceil(shortfall / 4));
-    if (starved > 0) {
-      colony.population.worker -= starved;
-      addLog(state, `${colonyId === 'player' ? 'Your' : 'A rival'} colony starved and lost ${starved} worker(s).`);
+    // Workers starve first (protecting the specialized forager caste as long
+    // as possible), but if workers run out and the deficit persists, foragers
+    // are no longer exempt — otherwise an all-forager colony could sit at 0
+    // sugar forever with zero consequence.
+    let toStarve = Math.min(colony.population.worker + colony.population.forager, Math.ceil(shortfall / 4));
+    const workerLoss = Math.min(colony.population.worker, toStarve);
+    colony.population.worker -= workerLoss;
+    toStarve -= workerLoss;
+    const foragerLoss = Math.min(colony.population.forager, toStarve);
+    colony.population.forager -= foragerLoss;
+
+    if (workerLoss + foragerLoss > 0) {
+      const who = workerLoss > 0
+        ? `${workerLoss} worker(s)${foragerLoss > 0 ? ` and ${foragerLoss} forager(s)` : ''}`
+        : `${foragerLoss} forager(s)`;
+      addLog(state, `${colonyId === 'player' ? 'Your' : 'A rival'} colony starved and lost ${who}.`);
     }
   }
 
@@ -46,6 +59,7 @@ export function resolveProduction(state, colonyId) {
     const deserted = Math.min(colony.population.soldier, Math.ceil(shortfall / 4));
     if (deserted > 0) {
       colony.population.soldier -= deserted;
+      clampGarrisons(colony);
       addLog(state, `${colonyId === 'player' ? 'Your' : 'A rival'} colony went hungry and lost ${deserted} soldier(s).`);
     }
   }

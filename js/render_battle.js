@@ -1,4 +1,5 @@
 import { movesInRange, adjacentEnemies, getCurrentActor } from './battle.js';
+import { escapeHtml } from './htmlEscape.js';
 
 const CELL = 50;
 const UNIT_ICONS = { forager: '🐜', soldier: '⚔️' };
@@ -84,6 +85,6 @@ function renderStatus(battle) {
 function renderLog(battle) {
   document.getElementById('battle-log').innerHTML = battle.log
     .slice(0, 6)
-    .map((l) => `<div class="log-line">${l}</div>`)
+    .map((l) => `<div class="log-line">${escapeHtml(l)}</div>`)
     .join('');
 }

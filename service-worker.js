@@ -1,4 +1,4 @@
-const CACHE_NAME = 'colony-v2';
+const CACHE_NAME = 'colony-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -24,6 +24,7 @@ const APP_SHELL = [
   './js/render_battle.js',
   './js/input.js',
   './js/constants.js',
+  './js/htmlEscape.js',
   './assets/icons/icon.svg',
 ];
 

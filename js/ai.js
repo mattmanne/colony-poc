@@ -61,7 +61,7 @@ function tryDigChamber(state, colonyId) {
     for (const n of neighbors(q, r)) {
       const key = keyOf(n.q, n.r);
       const tile = state.map.tiles[key];
-      if (tile && !tile.chamber && tile.terrain !== 'water' && tile.discoveredBy[colonyId]) {
+      if (tile && !tile.chamber && !tile.resourceNode && tile.terrain !== 'water' && tile.discoveredBy[colonyId]) {
         return digChamber(state, colonyId, key, chamberType).ok;
       }
     }

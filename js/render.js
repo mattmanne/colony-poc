@@ -3,6 +3,7 @@ import { totalPopulation } from './state.js';
 import { isAdjacentToOwnedChamber, canAffordChamber } from './colony.js';
 import { availableSoldiers } from './trails.js';
 import { CHAMBER_TYPES, TRAIL_MAX_CAPACITY, TRAIL_UPGRADE_COST_MINERAL, MAX_GARRISON } from './constants.js';
+import { escapeHtml } from './htmlEscape.js';
 
 const HEX_SIZE = 26;
 const OFFSET = 480;
@@ -69,7 +70,8 @@ function renderMap(state, ui) {
         div.textContent = RESOURCE_ICONS[tile.resourceNode.type];
       }
 
-      const diggable = !tile.chamber && tile.terrain !== 'water' && isAdjacentToOwnedChamber(state, 'player', key);
+      const diggable = !tile.chamber && !tile.resourceNode && tile.terrain !== 'water'
+        && isAdjacentToOwnedChamber(state, 'player', key);
       if (diggable) div.classList.add('hex-diggable');
 
       if (tile.resourceNode && !player.trails.some((t) => t.path[t.path.length - 1] === key)) {
@@ -116,7 +118,9 @@ function renderTrails(state) {
 function renderColonyPanel(state) {
   const player = state.colonies.player;
   const panel = document.getElementById('colony-panel');
-  const traitNote = player.traits.length > 0 ? `<p class="hint">Unlocked: ${player.traits.join(', ')}</p>` : '';
+  const traitNote = player.traits.length > 0
+    ? `<p class="hint">Unlocked: ${player.traits.map(escapeHtml).join(', ')}</p>`
+    : '';
   panel.innerHTML = `
     <h3>Colony</h3>
     <p>Population: ${totalPopulation(player)} / ${player.populationCap}</p>
@@ -153,20 +157,21 @@ function renderTilePanel(state, ui) {
   }
 
   const player = state.colonies.player;
-  let html = `<h3>Tile (${tile.q}, ${tile.r})</h3>`;
-  html += `<p>Terrain: ${tile.terrain}</p>`;
-  html += `<p>Owner: ${tile.owner || 'unclaimed'}</p>`;
+  let html = `<h3>Tile (${Number(tile.q)}, ${Number(tile.r)})</h3>`;
+  html += `<p>Terrain: ${escapeHtml(tile.terrain)}</p>`;
+  html += `<p>Owner: ${escapeHtml(tile.owner || 'unclaimed')}</p>`;
 
   if (tile.chamber) {
-    html += `<p>Chamber: ${CHAMBER_TYPES[tile.chamber.type].name} (${tile.chamber.ownerColonyId})</p>`;
+    const chamberDef = CHAMBER_TYPES[tile.chamber.type];
+    html += `<p>Chamber: ${escapeHtml(chamberDef ? chamberDef.name : tile.chamber.type)} (${escapeHtml(tile.chamber.ownerColonyId)})</p>`;
   }
   if (tile.resourceNode) {
-    html += `<p>Resource: ${tile.resourceNode.type} — ${Math.floor(tile.resourceNode.amount)}/${tile.resourceNode.maxAmount}</p>`;
+    html += `<p>Resource: ${escapeHtml(tile.resourceNode.type)} — ${Math.floor(tile.resourceNode.amount)}/${tile.resourceNode.maxAmount}</p>`;
   }
 
   html += '<div class="actions">';
 
-  if (!tile.chamber && tile.terrain !== 'water' && isAdjacentToOwnedChamber(state, 'player', key)) {
+  if (!tile.chamber && !tile.resourceNode && tile.terrain !== 'water' && isAdjacentToOwnedChamber(state, 'player', key)) {
     for (const type of ['storage', 'farm', 'nursery']) {
       const def = CHAMBER_TYPES[type];
       const afford = canAffordChamber(player, type);
@@ -179,11 +184,11 @@ function renderTilePanel(state, ui) {
     if (existingTrail) {
       html += `<p>Your trail: capacity ${existingTrail.capacity}, garrison ${existingTrail.garrison}/${MAX_GARRISON}${existingTrail.contested ? ' — <span class="contested">CONTESTED</span>' : ''}</p>`;
       if (existingTrail.capacity < TRAIL_MAX_CAPACITY) {
-        html += `<button data-action="upgrade-trail" data-trail-id="${existingTrail.id}">Upgrade Capacity (${TRAIL_UPGRADE_COST_MINERAL} mineral)</button>`;
+        html += `<button data-action="upgrade-trail" data-trail-id="${escapeHtml(existingTrail.id)}">Upgrade Capacity (${TRAIL_UPGRADE_COST_MINERAL} mineral)</button>`;
       }
       if (existingTrail.garrison < MAX_GARRISON) {
         const canGarrison = availableSoldiers(state, 'player') >= 1;
-        html += `<button data-action="garrison" data-trail-id="${existingTrail.id}" ${canGarrison ? '' : 'disabled'}>Garrison +1 Soldier</button>`;
+        html += `<button data-action="garrison" data-trail-id="${escapeHtml(existingTrail.id)}" ${canGarrison ? '' : 'disabled'}>Garrison +1 Soldier</button>`;
       }
     } else {
       html += '<button data-action="lay-trail">Lay Trail Here (1 forager)</button>';
@@ -196,6 +201,6 @@ function renderTilePanel(state, ui) {
 
 function renderLog(state) {
   document.getElementById('log').innerHTML = state.log
-    .map((e) => `<div class="log-line"><b>C${e.turn}</b> ${e.text}</div>`)
+    .map((e) => `<div class="log-line"><b>C${Number(e.turn)}</b> ${escapeHtml(e.text)}</div>`)
     .join('');
 }

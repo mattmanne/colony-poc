@@ -1,5 +1,5 @@
 import { addLog } from './state.js';
-import { deliverPip } from './trails.js';
+import { deliverPip, clampGarrisons } from './trails.js';
 
 const GRID_SIZE = 5;
 const SOLDIER_STATS = { atk: 3, hp: 6, move: 1 };
@@ -231,6 +231,8 @@ export function resolveBattleOutcome(state, battle) {
   const attackerDead = battle.units.filter((u) => u.side === 'attacker' && !u.alive).length;
   defenderColony.population.soldier = Math.max(0, defenderColony.population.soldier - defenderDead);
   attackerColony.population.soldier = Math.max(0, attackerColony.population.soldier - attackerDead);
+  clampGarrisons(defenderColony);
+  clampGarrisons(attackerColony);
 
   if (battle.outcome === 'defender') {
     const trail = defenderColony.trails.find((t) => t.id === trailId);

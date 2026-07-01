@@ -75,6 +75,21 @@ export function assignGarrison(state, colonyId, trailId, amount) {
   return { ok: true };
 }
 
+// Soldiers can be lost outside of assignGarrison (starvation desertion, battle
+// casualties) without the trails they were garrisoned on being told — without
+// this, a battle could later spawn more defender units than the colony
+// actually has soldiers for. Call after anything that reduces population.soldier.
+export function clampGarrisons(colony) {
+  let excess = colony.trails.reduce((sum, t) => sum + t.garrison, 0) - colony.population.soldier;
+  if (excess <= 0) return;
+  for (const trail of colony.trails) {
+    if (excess <= 0) break;
+    const reduce = Math.min(trail.garrison, excess);
+    trail.garrison -= reduce;
+    excess -= reduce;
+  }
+}
+
 function pathLatency(state, colonyId, path) {
   const colony = state.colonies[colonyId];
   const base = Math.max(1, Math.ceil(path.length / 2));
@@ -91,6 +106,12 @@ function findContestingColonyId(state, trail) {
 
 export function resolveTrailsForColony(state, colonyId) {
   const colony = state.colonies[colonyId];
+  // Capacity is only checked against forager supply at lay/upgrade time; if
+  // foragers later die (starvation, etc.) trails would otherwise keep running
+  // at full capacity with foragers that no longer exist. Throttle by whatever
+  // forager budget is actually left, without touching the stored capacity
+  // itself — that's the player's paid-for upgrade, not something to erase.
+  let foragerBudget = colony.population.forager;
 
   for (const trail of colony.trails) {
     trail.contested = trail.path.some((key) => {
@@ -100,9 +121,11 @@ export function resolveTrailsForColony(state, colonyId) {
 
     const destTile = state.map.tiles[trail.path[trail.path.length - 1]];
     const node = destTile.resourceNode;
+    const effectiveCapacity = Math.min(trail.capacity, foragerBudget);
+    foragerBudget -= effectiveCapacity;
 
     if (node && node.amount > 0) {
-      const pickup = Math.min(trail.capacity, node.amount);
+      const pickup = Math.min(effectiveCapacity, node.amount);
       if (pickup > 0) {
         node.amount -= pickup;
         trail.inTransit.push({ resourceType: node.type, amount: pickup, eta: pathLatency(state, colonyId, trail.path) });
