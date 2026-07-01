@@ -1,0 +1,9 @@
+{
+  "name": "colony",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only manifest for running the test suite. The game itself is a plain static site with no build step or dependencies.",
+  "scripts": {
+    "test": "node --test"
+  }
+}

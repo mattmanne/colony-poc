@@ -30,6 +30,17 @@ git push origin master
 
 GitHub Pages rebuilds automatically (usually within a minute or two). **If you change any cached file, bump `CACHE_NAME` in `service-worker.js`** — the service worker caches the app shell aggressively for offline/PWA use, and players who've already installed it won't see updates until the cache name changes.
 
+## Testing
+
+All game logic is pure and DOM-free, so it's covered by an automated suite using Node's built-in test runner — no dependencies, no build step:
+
+```bash
+cd colony
+npm test        # or: node --test
+```
+
+`package.json` exists solely to give `npm test` a home; it declares no runtime dependencies and has no effect on how the game itself loads in a browser. Tests live in `tests/` (one file per module, plus explicit regression tests for bugs found during review — see the file names for what each one guards against). `render.js`/`render_battle.js`/`input.js` aren't covered here since they touch the DOM; those were verified with a one-off Playwright-driven browser session instead (not checked into the repo).
+
 ## Architecture
 
 Vanilla HTML/CSS/JS, ES modules, no framework or bundler. State is plain JSON, serialized to `localStorage` after every action.
@@ -70,5 +81,6 @@ Not implemented / known gaps:
 - AI rivals never garrison trails or fight back in tactical battles — they only ever lose resources to the probabilistic leak, never a battle. Battles only ever have the player as defender.
 - No cross-device save sync — a save is local to one browser's `localStorage`.
 - Economy balance is untuned past "does it function correctly" — long unattended play can lead to colony-wide starvation/extinction for all three colonies. Worth a dedicated balance pass before relying on long play sessions.
+- A freshly-spawned colony's starting vision (radius 2 around the nest) sometimes reveals zero resource nodes, since nodes are sparse (~1-in-7 tiles) relative to that small starting area — found while writing tests. Not fatal (digging further chambers gradually expands vision), but a rough first-turn experience on unlucky seeds.
 
 The fuller design rationale and a running list of proposed follow-ups (including security review notes) live in this project's Claude Code plan document, tracked outside this repo.
