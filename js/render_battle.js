@@ -5,7 +5,17 @@ import { iconSvg } from './icons.js';
 const CELL = 50;
 const UNIT_ICON_KEYS = { forager: 'ant', soldier: 'soldier' };
 
+// The grid rebuilds every render, so "did this unit just take damage" (to
+// trigger a one-shot hit-flash on its fresh cell) has to be tracked outside
+// the DOM. Reset whenever a new battle instance shows up.
+let lastBattleRef = null;
+const lastKnownHp = new Map();
+
 export function renderBattle(battle) {
+  if (battle !== lastBattleRef) {
+    lastBattleRef = battle;
+    lastKnownHp.clear();
+  }
   renderGrid(battle);
   renderStatus(battle);
   renderLog(battle);
@@ -45,6 +55,10 @@ function renderGrid(battle) {
         hp.textContent = unit.hp;
         cell.appendChild(hp);
 
+        const previousHp = lastKnownHp.get(unit.id);
+        if (previousHp !== undefined && previousHp > unit.hp) cell.classList.add('battle-hit');
+        lastKnownHp.set(unit.id, unit.hp);
+
         if (attackableIds.has(unit.id)) {
           cell.classList.add('battle-attackable');
           cell.dataset.attackTarget = unit.id;
@@ -57,6 +71,12 @@ function renderGrid(battle) {
 
       gridEl.appendChild(cell);
     }
+  }
+
+  // Units that just died this render (present in lastKnownHp but no longer
+  // alive-and-on-the-board) don't need tracking anymore.
+  for (const id of lastKnownHp.keys()) {
+    if (!battle.units.some((u) => u.id === id && u.alive && !u.escaped)) lastKnownHp.delete(id);
   }
 }
 

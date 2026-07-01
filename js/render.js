@@ -12,6 +12,27 @@ const OFFSET = 480;
 const RESOURCE_ICON_KEYS = { sugar: 'sugar', protein: 'protein', fungus: 'fungus', mineral: 'mineral' };
 const CHAMBER_ICON_KEYS = { nest: 'ant', storage: 'storage', farm: 'farm', nursery: 'nursery' };
 
+// Resource pills rebuild their DOM every render, so the "currently displayed"
+// value (which may be mid-animation) has to live outside the DOM entirely —
+// otherwise every render would just snap straight to the new number instead
+// of counting up/down to it.
+const displayedResourceValues = {};
+
+function animateNumber(key, from, to, onUpdate, duration = 450) {
+  if (from === to) { onUpdate(to); return; }
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - (1 - t) * (1 - t);
+    const value = Math.round(from + (to - from) * eased);
+    onUpdate(value);
+    displayedResourceValues[key] = value;
+    if (t < 1) requestAnimationFrame(step);
+    else displayedResourceValues[key] = to;
+  }
+  requestAnimationFrame(step);
+}
+
 export function renderAll(state, ui) {
   renderTopbar(state);
   renderMap(state, ui);
@@ -33,8 +54,15 @@ function renderTopbar(state) {
     const span = document.createElement('span');
     span.className = 'resource-pill';
     span.innerHTML = iconSvg(RESOURCE_ICON_KEYS[res], 'pill-icon');
-    span.appendChild(document.createTextNode(` ${Math.floor(player.resources[res])}/${player.storageCap[res]}`));
+    const amountEl = document.createElement('span');
+    span.appendChild(amountEl);
     bar.appendChild(span);
+
+    const cap = player.storageCap[res];
+    const target = Math.floor(player.resources[res]);
+    const from = displayedResourceValues[res] !== undefined ? displayedResourceValues[res] : target;
+    amountEl.textContent = ` ${from}/${cap}`;
+    animateNumber(res, from, target, (v) => { amountEl.textContent = ` ${v}/${cap}`; });
   }
 }
 
@@ -45,6 +73,10 @@ function ownerClass(owner) {
   if (owner === 'rival_2') return 'owner-rival-2';
   return '';
 }
+
+// Chambers seen dug on a previous render don't replay their "just built" pop
+// animation — only a tile transitioning from no-chamber to chamber gets it.
+const knownChamberTiles = new Set();
 
 function renderMap(state, ui) {
   const mapEl = document.getElementById('map');
@@ -69,6 +101,11 @@ function renderMap(state, ui) {
     if (discovered) {
       if (tile.terrain === 'water') div.classList.add('terrain-water');
       if (tile.terrain === 'rock') div.classList.add('terrain-rock');
+
+      if (tile.chamber && tile.chamber.type !== 'nest' && !knownChamberTiles.has(key)) {
+        div.classList.add('tile-pop');
+      }
+      if (tile.chamber) knownChamberTiles.add(key);
 
       if (tile.chamber) {
         div.innerHTML = iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'tile-icon');
@@ -103,27 +140,79 @@ export function centerMapOnTile(tileKey) {
   if (div) div.scrollIntoView({ block: 'center', inline: 'center' });
 }
 
+// In-transit resource pips get persistent DOM elements (keyed by their
+// stable id) so a CSS transition can actually animate their position between
+// renders — the static route dots below are cheap to fully rebuild every
+// time since they never move.
+const pipElements = new Map();
+
 function renderTrails(state) {
   const overlay = document.getElementById('trail-overlay');
-  overlay.innerHTML = '';
+  let routeLayer = overlay.querySelector('.route-layer');
+  if (!routeLayer) {
+    routeLayer = document.createElement('div');
+    routeLayer.className = 'route-layer';
+    overlay.appendChild(routeLayer);
+  }
+  routeLayer.innerHTML = '';
+
+  const activePipIds = new Set();
 
   for (const colonyId of Object.keys(state.colonies)) {
     const colony = state.colonies[colonyId];
     for (const trail of colony.trails) {
+      const colorClass = trail.contested ? 'trail-contested' : `trail-${colonyId === 'player' ? 'player' : colonyId}`;
+
       for (const key of trail.path) {
         const tile = state.map.tiles[key];
         if (!tile.discoveredBy.player) continue;
-
         const { x, y } = pixelForHex(tile.q, tile.r, HEX_SIZE);
         const dot = document.createElement('div');
-        const colorClass = trail.contested ? 'trail-contested' : `trail-${colonyId === 'player' ? 'player' : colonyId}`;
         dot.className = `trail-dot ${colorClass}`;
         dot.style.left = `${x + OFFSET + HEX_SIZE - 4}px`;
         dot.style.top = `${y + OFFSET + HEX_SIZE - 4}px`;
-        overlay.appendChild(dot);
+        routeLayer.appendChild(dot);
+      }
+
+      if (!state.map.tiles[trail.path[trail.path.length - 1]].discoveredBy.player) continue;
+      for (const pip of trail.inTransit) {
+        activePipIds.add(pip.id);
+        const pos = pipPixelPosition(state, trail.path, pip);
+        let el = pipElements.get(pip.id);
+        if (!el) {
+          el = document.createElement('div');
+          el.className = `trail-pip ${colorClass}`;
+          overlay.appendChild(el);
+          pipElements.set(pip.id, el);
+        }
+        el.style.left = `${pos.x}px`;
+        el.style.top = `${pos.y}px`;
       }
     }
   }
+
+  for (const [id, el] of pipElements) {
+    if (!activePipIds.has(id)) {
+      el.remove();
+      pipElements.delete(id);
+    }
+  }
+}
+
+// Pips travel from the resource node (path's last tile) to the nest (path's
+// first tile) as eta counts down — interpolated as a straight line between
+// the two endpoints rather than hugging every intermediate tile, which reads
+// just as well at this map scale for a lot less complexity.
+function pipPixelPosition(state, path, pip) {
+  const progress = pip.totalEta > 0 ? Math.min(1, Math.max(0, 1 - pip.eta / pip.totalEta)) : 1;
+  const nodeTile = state.map.tiles[path[path.length - 1]];
+  const nestTile = state.map.tiles[path[0]];
+  const nodePos = pixelForHex(nodeTile.q, nodeTile.r, HEX_SIZE);
+  const nestPos = pixelForHex(nestTile.q, nestTile.r, HEX_SIZE);
+  return {
+    x: OFFSET + HEX_SIZE + nodePos.x + (nestPos.x - nodePos.x) * progress,
+    y: OFFSET + HEX_SIZE + nodePos.y + (nestPos.y - nodePos.y) * progress,
+  };
 }
 
 function renderColonyPanel(state) {

@@ -106,6 +106,16 @@
   z-index: 1;
 }
 
+@keyframes tile-pop {
+  0% { transform: scale(0.92); }
+  40% { transform: scale(1.25); filter: brightness(1.4); }
+  100% { transform: scale(0.92); }
+}
+
+.tile-pop {
+  animation: tile-pop 0.5s ease-out;
+}
+
 .trail-dot {
   position: absolute;
   width: 8px;
@@ -132,4 +142,22 @@
 .trail-contested {
   background: #ffd24a;
   box-shadow: 0 0 5px rgba(255, 210, 74, 0.9);
+}
+
+.route-layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* A resource actually in transit — larger than the static route dots, and
+   its left/top are updated (not recreated) across renders so this animates
+   smoothly from tile to tile instead of snapping. */
+.trail-pip {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  transition: left 0.5s ease, top 0.5s ease;
+  z-index: 1;
 }

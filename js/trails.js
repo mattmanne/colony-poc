@@ -9,6 +9,7 @@ import { addLog } from './state.js';
 import { availableForagers } from './colony.js';
 
 let trailCounter = 0;
+let pipCounter = 0;
 
 // Shared by the auto-routed (layTrail) and player-drawn (layTrailManual)
 // entry points — both end up with a concrete tile-by-tile path; this is what
@@ -179,7 +180,13 @@ export function resolveTrailsForColony(state, colonyId) {
       const pickup = Math.min(effectiveCapacity, node.amount);
       if (pickup > 0) {
         node.amount -= pickup;
-        trail.inTransit.push({ resourceType: node.type, amount: pickup, eta: pathLatency(state, colonyId, trail.path) });
+        const latency = pathLatency(state, colonyId, trail.path);
+        // `id` gives the renderer a stable identity to animate against across
+        // frames; `totalEta` (fixed) alongside the countdown `eta` lets it
+        // compute how far along the path this pip currently is.
+        trail.inTransit.push({
+          id: `pip_${pipCounter++}`, resourceType: node.type, amount: pickup, eta: latency, totalEta: latency,
+        });
       }
     }
     if (node) {
