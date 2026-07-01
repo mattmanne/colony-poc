@@ -6,7 +6,7 @@ import { beginAdvanceCycle, finishAdvanceCycle } from './cycle.js';
 import { createBattle, getCurrentActor, moveUnit, attackUnit, passTurn, resolveBattleOutcome } from './battle.js';
 import { saveGame, clearSave } from './save.js';
 import { getInitialState } from './state.js';
-import { renderAll, centerMapOnTile } from './render.js';
+import { renderAll, centerMapOnTile, resetRenderState } from './render.js';
 import { renderBattle } from './render_battle.js';
 
 export function initHelpModal(showOnLoad) {
@@ -63,6 +63,7 @@ export function initInput(store) {
     store.battle = null;
     store.ui.selectedTile = null;
     store.ui.drawingTrail = null;
+    resetRenderState();
     document.getElementById('battle-overlay').classList.add('hidden');
     saveGame(store.state);
     render(store);

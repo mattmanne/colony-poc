@@ -17,11 +17,20 @@ const CHAMBER_ICON_KEYS = { nest: 'ant', storage: 'storage', farm: 'farm', nurse
 // otherwise every render would just snap straight to the new number instead
 // of counting up/down to it.
 const displayedResourceValues = {};
+// Rapid re-triggers (e.g. double-tapping Advance Cycle before a 450ms count
+// animation finishes) would otherwise race: the older rAF loop keeps writing
+// its own stale interpolation over the newer one's every frame, flickering.
+// A generation token per key lets a superseded loop notice and stop itself.
+const animationGeneration = {};
 
 function animateNumber(key, from, to, onUpdate, duration = 450) {
+  const myGeneration = (animationGeneration[key] || 0) + 1;
+  animationGeneration[key] = myGeneration;
+
   if (from === to) { onUpdate(to); return; }
   const start = performance.now();
   function step(now) {
+    if (animationGeneration[key] !== myGeneration) return; // a newer call took over
     const t = Math.min(1, (now - start) / duration);
     const eased = 1 - (1 - t) * (1 - t);
     const value = Math.round(from + (to - from) * eased);
@@ -39,6 +48,20 @@ export function renderAll(state, ui) {
   renderColonyPanel(state);
   renderTilePanel(state, ui);
   renderLog(state);
+}
+
+// Several render-only caches (animation state, "have I seen this tile dug"
+// tracking, persistent pip elements) live at module scope, keyed by things
+// like tile coordinates that get reused by a brand new map on "New Colony".
+// Without clearing them, a coincidentally-reused key could silently suppress
+// an animation that should play, or animate a resource counter in from a
+// stale previous game's value. Call this whenever a new colony is started.
+export function resetRenderState() {
+  for (const key of Object.keys(displayedResourceValues)) delete displayedResourceValues[key];
+  for (const key of Object.keys(animationGeneration)) delete animationGeneration[key];
+  knownChamberTiles.clear();
+  for (const el of pipElements.values()) el.remove();
+  pipElements.clear();
 }
 
 function renderTopbar(state) {
