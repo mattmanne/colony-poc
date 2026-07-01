@@ -1,0 +1,30 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1b1712;
+  color: #eee;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+h1, h2, h3 {
+  margin: 0.2em 0;
+}
+
+.hint {
+  color: #999;
+  font-style: italic;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
