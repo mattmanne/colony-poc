@@ -4,12 +4,13 @@ import { isAdjacentToOwnedChamber, canAffordChamber } from './colony.js';
 import { availableSoldiers, nextHopCandidates } from './trails.js';
 import { CHAMBER_TYPES, TRAIL_MAX_CAPACITY, TRAIL_UPGRADE_COST_MINERAL, MAX_GARRISON } from './constants.js';
 import { escapeHtml } from './htmlEscape.js';
+import { iconSvg } from './icons.js';
 
 const HEX_SIZE = 26;
 const OFFSET = 480;
 
-const RESOURCE_ICONS = { sugar: '🍬', protein: '🥩', fungus: '🍄', mineral: '💎' };
-const CHAMBER_ICONS = { nest: '🐜', storage: '📦', farm: '🍄', nursery: '🥚' };
+const RESOURCE_ICON_KEYS = { sugar: 'sugar', protein: 'protein', fungus: 'fungus', mineral: 'mineral' };
+const CHAMBER_ICON_KEYS = { nest: 'ant', storage: 'storage', farm: 'farm', nursery: 'nursery' };
 
 export function renderAll(state, ui) {
   renderTopbar(state);
@@ -31,7 +32,8 @@ function renderTopbar(state) {
   for (const res of ['sugar', 'protein', 'fungus', 'mineral']) {
     const span = document.createElement('span');
     span.className = 'resource-pill';
-    span.textContent = `${RESOURCE_ICONS[res]} ${Math.floor(player.resources[res])}/${player.storageCap[res]}`;
+    span.innerHTML = iconSvg(RESOURCE_ICON_KEYS[res], 'pill-icon');
+    span.appendChild(document.createTextNode(` ${Math.floor(player.resources[res])}/${player.storageCap[res]}`));
     bar.appendChild(span);
   }
 }
@@ -69,9 +71,9 @@ function renderMap(state, ui) {
       if (tile.terrain === 'rock') div.classList.add('terrain-rock');
 
       if (tile.chamber) {
-        div.textContent = CHAMBER_ICONS[tile.chamber.type] || '🏠';
+        div.innerHTML = iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'tile-icon');
       } else if (tile.resourceNode) {
-        div.textContent = RESOURCE_ICONS[tile.resourceNode.type];
+        div.innerHTML = iconSvg(RESOURCE_ICON_KEYS[tile.resourceNode.type], 'tile-icon');
       }
 
       if (drawing) {
@@ -178,10 +180,12 @@ function renderTilePanel(state, ui) {
 
   if (tile.chamber) {
     const chamberDef = CHAMBER_TYPES[tile.chamber.type];
-    html += `<p>Chamber: ${escapeHtml(chamberDef ? chamberDef.name : tile.chamber.type)} (${escapeHtml(tile.chamber.ownerColonyId)})</p>`;
+    const chamberIcon = iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'inline-icon');
+    html += `<p>${chamberIcon} ${escapeHtml(chamberDef ? chamberDef.name : tile.chamber.type)} (${escapeHtml(tile.chamber.ownerColonyId)})</p>`;
   }
   if (tile.resourceNode) {
-    html += `<p>Resource: ${escapeHtml(tile.resourceNode.type)} — ${Math.floor(tile.resourceNode.amount)}/${tile.resourceNode.maxAmount}</p>`;
+    const resourceIcon = iconSvg(RESOURCE_ICON_KEYS[tile.resourceNode.type], 'inline-icon');
+    html += `<p>${resourceIcon} ${escapeHtml(tile.resourceNode.type)} — ${Math.floor(tile.resourceNode.amount)}/${tile.resourceNode.maxAmount}</p>`;
   }
 
   html += '<div class="actions">';

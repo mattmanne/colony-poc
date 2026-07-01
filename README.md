@@ -82,6 +82,7 @@ js/
   milestones.js           Checks/applies permanent unlocks
   save.js                 localStorage read/write, versioned
   htmlEscape.js           XSS-hardening helper for save-derived strings reaching innerHTML
+  icons.js                Hand-drawn SVG icon set (resources/chambers/units) — no emoji, see note below
   render.js, render_battle.js   State → DOM (one-way; no state mutation from render code)
   input.js                DOM events → action functions → save → re-render
   main.js                 Bootstraps the app, registers the service worker
@@ -89,6 +90,8 @@ tests/                    node --test suite — see Testing section above
 ```
 
 All game logic (`state.js` through `milestones.js`) is pure and DOM-free — it can be exercised directly in Node for testing without a browser. `render*.js`/`input.js` are the only DOM-touching modules.
+
+**Why no emoji for game icons**: the app icon originally used an emoji glyph and it silently rendered as a near-invisible fallback in a headless-Chromium test environment — color-emoji font support isn't guaranteed everywhere. `js/icons.js` holds a small hand-drawn SVG set instead, so every glyph the player actually needs to read looks the same (and looks intentional) regardless of platform.
 
 ## Current scope (v1)
 

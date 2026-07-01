@@ -1,8 +1,9 @@
 import { movesInRange, adjacentEnemies, getCurrentActor } from './battle.js';
 import { escapeHtml } from './htmlEscape.js';
+import { iconSvg } from './icons.js';
 
 const CELL = 50;
-const UNIT_ICONS = { forager: '🐜', soldier: '⚔️' };
+const UNIT_ICON_KEYS = { forager: 'ant', soldier: 'soldier' };
 
 export function renderBattle(battle) {
   renderGrid(battle);
@@ -38,7 +39,7 @@ function renderGrid(battle) {
       const unit = battle.units.find((u) => u.alive && !u.escaped && u.x === x && u.y === y);
       if (unit) {
         cell.classList.add(unit.side === 'defender' ? 'battle-unit-defender' : 'battle-unit-attacker');
-        cell.textContent = UNIT_ICONS[unit.type];
+        cell.innerHTML = iconSvg(UNIT_ICON_KEYS[unit.type], 'battle-icon');
         const hp = document.createElement('span');
         hp.className = 'battle-hp';
         hp.textContent = unit.hp;

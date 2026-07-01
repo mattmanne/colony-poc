@@ -23,12 +23,13 @@
      part of the box itself and clip cleanly to the polygon. */
   border: 3px solid transparent;
   clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  background: #3a3226;
+  background: linear-gradient(155deg, #423a2c 0%, #362e22 55%, #2e2719 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
   /* Hexes tessellate edge-to-edge by position, so same-state borders on
      adjacent tiles visually merge into one continuous bar. Scaling each hex
      down slightly (around its own center, so the grid layout math is
@@ -36,16 +37,20 @@
   transform: scale(0.92);
 }
 
+.hex:active {
+  filter: brightness(1.15);
+}
+
 .hex-fog {
-  background: #151210;
+  background: linear-gradient(155deg, #1c1712 0%, #14100c 100%);
 }
 
 .terrain-water {
-  background: #264a5c;
+  background: linear-gradient(155deg, #2f5a70 0%, #1f3c4a 100%);
 }
 
 .terrain-rock {
-  background: #4a4038;
+  background: linear-gradient(155deg, #574d3e 0%, #423a2e 100%);
 }
 
 .owner-player {
@@ -66,6 +71,8 @@
 
 .hex-selected {
   outline: 2px solid #fff;
+  outline-offset: -1px;
+  filter: brightness(1.2);
   z-index: 2;
 }
 
@@ -104,20 +111,25 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.6);
 }
 
 .trail-player {
   background: #4aa3ff;
+  box-shadow: 0 0 4px rgba(74, 163, 255, 0.8);
 }
 
 .trail-rival_1 {
   background: #ff5a5a;
+  box-shadow: 0 0 4px rgba(255, 90, 90, 0.8);
 }
 
 .trail-rival_2 {
   background: #b06aff;
+  box-shadow: 0 0 4px rgba(176, 106, 255, 0.8);
 }
 
 .trail-contested {
   background: #ffd24a;
+  box-shadow: 0 0 5px rgba(255, 210, 74, 0.9);
 }
