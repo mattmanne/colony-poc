@@ -22,8 +22,8 @@ test('each colony starts with a nest chamber, owned tile, and revealed fog aroun
   }
 });
 
-test('totalPopulation sums all four castes', () => {
-  const colony = { population: { worker: 3, forager: 2, soldier: 1, scout: 0 } };
+test('totalPopulation sums all castes', () => {
+  const colony = { population: { worker: 3, forager: 2, soldier: 1 } };
   assert.equal(totalPopulation(colony), 6);
 });
 

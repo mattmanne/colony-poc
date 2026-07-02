@@ -4,7 +4,7 @@ export const VISION_RADIUS = 3;
 
 export const STARTING_RESOURCES = { sugar: 60, protein: 40, fungus: 0, mineral: 30 };
 export const STARTING_STORAGE_CAP = { sugar: 200, protein: 200, fungus: 150, mineral: 150 };
-export const STARTING_POPULATION = { worker: 6, forager: 4, soldier: 0, scout: 0 };
+export const STARTING_POPULATION = { worker: 6, forager: 4, soldier: 0 };
 export const STARTING_POPULATION_CAP = 12;
 
 export const CHAMBER_TYPES = {

@@ -3,7 +3,7 @@ import { CHAMBER_TYPES } from './constants.js';
 import { addLog, revealAroundChambers, claimTerritoryAroundChambers } from './state.js';
 import { clampGarrisons } from './trails.js';
 
-const CASTES = ['worker', 'forager', 'soldier', 'scout'];
+const CASTES = ['worker', 'forager', 'soldier'];
 
 export function canAffordChamber(colony, chamberType) {
   const cost = CHAMBER_TYPES[chamberType].digCost || {};

@@ -39,7 +39,7 @@ export function beginAdvanceCycle(state) {
 }
 
 export function finishAdvanceCycle(state) {
-  checkMilestones(state, 'player');
+  for (const colonyId of Object.keys(state.colonies)) checkMilestones(state, colonyId);
   state.turn += 1;
   state.actionPointsRemaining = AP_PER_CYCLE;
   addLog(state, `— Cycle ${state.turn} begins —`);

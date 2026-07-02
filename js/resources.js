@@ -22,9 +22,9 @@ export function resolveProduction(state, colonyId) {
     }
   }
 
-  // Workers/foragers run on sugar; soldiers/scouts (the "elite" castes) need fungus.
+  // Workers/foragers run on sugar; soldiers (the "elite" caste) need fungus.
   const laborPop = colony.population.worker + colony.population.forager;
-  const militaryPop = colony.population.soldier + colony.population.scout;
+  const militaryPop = colony.population.soldier;
 
   const sugarUpkeep = Math.ceil(laborPop * POP_UPKEEP_SUGAR_PER_ANT);
   if (colony.resources.sugar >= sugarUpkeep) {

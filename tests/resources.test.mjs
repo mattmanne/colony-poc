@@ -37,10 +37,10 @@ test('population does not grow past its cap', () => {
   player.resources.protein = 1000;
   player.populationCap = 0;
   const totalBefore = player.population.worker + player.population.forager
-    + player.population.soldier + player.population.scout;
+    + player.population.soldier;
   resolveProduction(state, 'player');
   const totalAfter = player.population.worker + player.population.forager
-    + player.population.soldier + player.population.scout;
+    + player.population.soldier;
   assert.equal(totalAfter, totalBefore);
 });
 
@@ -51,7 +51,7 @@ test('regression: workers starve first when sugar is insufficient, then foragers
   player.resources.protein = 0;
   // A large forager count guarantees the shortfall comfortably exceeds what
   // the single worker alone can absorb, regardless of the current upkeep rate.
-  player.population = { worker: 1, forager: 50, soldier: 0, scout: 0 };
+  player.population = { worker: 1, forager: 50, soldier: 0 };
 
   resolveProduction(state, 'player');
   assert.equal(player.population.worker, 0, 'the lone worker should starve first');
@@ -63,7 +63,7 @@ test('a colony with only foragers is no longer immune to starvation (pre-fix reg
   const player = state.colonies.player;
   player.resources.sugar = 0;
   player.resources.protein = 0;
-  player.population = { worker: 0, forager: 20, soldier: 0, scout: 0 };
+  player.population = { worker: 0, forager: 20, soldier: 0 };
 
   resolveProduction(state, 'player');
   assert.ok(player.population.forager < 20, 'foragers must be able to starve once no workers remain');

@@ -22,7 +22,12 @@ export function createBattle(state, pending) {
   const attackerColony = state.colonies[pending.attackerColonyId];
   const trail = defenderColony.trails.find((t) => t.id === pending.trailId);
   const garrison = trail ? trail.garrison : 0;
-  const eliteBonus = defenderColony.traits.includes('elite_soldier') ? 1 : 0;
+  // Elite bonus is a property of whichever colony trained the soldiers, not
+  // of which side of this particular fight they end up on — a colony that
+  // unlocked elite_soldier should get +1 atk whether it's raiding or being
+  // raided.
+  const defenderEliteBonus = defenderColony.traits.includes('elite_soldier') ? 1 : 0;
+  const attackerEliteBonus = attackerColony.traits.includes('elite_soldier') ? 1 : 0;
 
   // Start columns 1 tile apart from the grid edges (distance 2 across the
   // middle) so units can close in and actually fight within the beat budget
@@ -31,13 +36,13 @@ export function createBattle(state, pending) {
   units.push(makeUnit('d0', 'defender', 'forager', 1, 2));
   const defenderSoldierYs = [1, 3];
   for (let i = 0; i < garrison; i++) {
-    units.push(makeUnit(`d${i + 1}`, 'defender', 'soldier', 1, defenderSoldierYs[i], eliteBonus));
+    units.push(makeUnit(`d${i + 1}`, 'defender', 'soldier', 1, defenderSoldierYs[i], defenderEliteBonus));
   }
 
   const attackerCount = Math.min(3, attackerColony.population.soldier);
   const attackerYs = [1, 2, 3];
   for (let i = 0; i < attackerCount; i++) {
-    units.push(makeUnit(`a${i}`, 'attacker', 'soldier', GRID_SIZE - 2, attackerYs[i]));
+    units.push(makeUnit(`a${i}`, 'attacker', 'soldier', GRID_SIZE - 2, attackerYs[i], attackerEliteBonus));
   }
 
   const battle = {

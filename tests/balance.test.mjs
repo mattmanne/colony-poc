@@ -45,7 +45,7 @@ test('a starving colony always keeps at least one forager alive (trail throughpu
   const player = state.colonies.player;
   player.resources.sugar = 0;
   player.resources.protein = 0;
-  player.population = { worker: 5, forager: 5, soldier: 0, scout: 0 };
+  player.population = { worker: 5, forager: 5, soldier: 0 };
 
   for (let i = 0; i < 20; i++) resolveProduction(state, 'player');
 

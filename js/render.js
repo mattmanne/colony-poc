@@ -131,9 +131,10 @@ function renderMap(state, ui) {
       if (tile.chamber) knownChamberTiles.add(key);
 
       if (tile.chamber) {
-        div.innerHTML = iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'tile-icon');
+        div.innerHTML = `<span class="tile-chit">${iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'tile-icon')}</span>`;
       } else if (tile.resourceNode) {
-        div.innerHTML = iconSvg(RESOURCE_ICON_KEYS[tile.resourceNode.type], 'tile-icon');
+        div.classList.add(`node-${tile.resourceNode.type}`);
+        div.innerHTML = `<span class="tile-chit">${iconSvg(RESOURCE_ICON_KEYS[tile.resourceNode.type], 'tile-icon')}</span>`;
       }
 
       if (drawing) {

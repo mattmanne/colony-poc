@@ -8,7 +8,8 @@ export function checkMilestones(state, colonyId) {
     if (milestone.check(colony)) {
       colony.traits.push(milestone.id);
       milestone.apply(colony);
-      addLog(state, `🏆 Milestone: ${milestone.label}`);
+      const who = colonyId === 'player' ? 'You' : 'A rival colony';
+      addLog(state, `🏆 Milestone: ${who} ${milestone.label.charAt(0).toLowerCase()}${milestone.label.slice(1)}`);
     }
   }
 }
