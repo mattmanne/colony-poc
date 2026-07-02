@@ -1,4 +1,4 @@
-const CACHE_NAME = 'colony-v6';
+const CACHE_NAME = 'colony-v7';
 const APP_SHELL = [
   './',
   './index.html',
