@@ -8,7 +8,7 @@ import {
 import { reassignCaste } from '../js/colony.js';
 import { findDiscoveredResourceNode, getInitialStateWithVisibleNode } from './helpers.mjs';
 import { findPath } from '../js/hexgrid.js';
-import { MAX_GARRISON, TRAIL_MAX_CAPACITY } from '../js/constants.js';
+import { MAX_GARRISON, TRAIL_MAX_CAPACITY, NODE_AMOUNT } from '../js/constants.js';
 
 test('layTrail succeeds to a discovered resource node and fails on a duplicate', () => {
   const state = getInitialStateWithVisibleNode(20);
@@ -165,6 +165,40 @@ test('regression: trail throughput is throttled by currently-alive foragers, not
   player.trails[0].inTransit = [];
   resolveTrailsForColony(state, 'player');
   assert.equal(player.trails[0].inTransit.length, 0, 'no pickup should occur with zero live foragers');
+});
+
+test('regression: sugar trails get forager-budget priority over other resource trails once foragers are scarce', () => {
+  // A colony that laid a non-sugar trail first and then starved down to one
+  // forager used to permanently zero its sugar income forever (the lone
+  // forager's capacity went to whichever trail was earlier in the array,
+  // never sugar) — an unrecoverable death spiral. Sugar must win the budget
+  // regardless of lay order.
+  const state = getInitialStateWithVisibleNode(39);
+  const player = state.colonies.player;
+  const mineralNodeKey = findDiscoveredResourceNode(state, 'player');
+  state.map.tiles[mineralNodeKey].resourceNode.type = 'mineral';
+  state.map.tiles[mineralNodeKey].resourceNode.amount = NODE_AMOUNT.mineral;
+
+  const sugarNodeKey = Object.keys(state.map.tiles).find((key) => {
+    const t = state.map.tiles[key];
+    return key !== mineralNodeKey && t.discoveredBy.player && t.terrain === 'soil'
+      && !t.chamber && !t.resourceNode;
+  });
+  assert.ok(sugarNodeKey, 'expected an empty discovered soil tile to host a synthetic sugar node');
+  state.map.tiles[sugarNodeKey].resourceNode = { type: 'sugar', amount: NODE_AMOUNT.sugar, maxAmount: NODE_AMOUNT.sugar };
+
+  // Lay the non-sugar trail FIRST so it would win under naive array-order
+  // allocation, then the sugar trail second.
+  assert.equal(layTrail(state, 'player', player.nestTile, mineralNodeKey).ok, true);
+  assert.equal(layTrail(state, 'player', player.nestTile, sugarNodeKey).ok, true);
+
+  player.population.forager = 1; // fewer than either trail's own capacity
+  resolveTrailsForColony(state, 'player');
+
+  const mineralTrail = player.trails.find((t) => t.path[t.path.length - 1] === mineralNodeKey);
+  const sugarTrail = player.trails.find((t) => t.path[t.path.length - 1] === sugarNodeKey);
+  assert.equal(sugarTrail.inTransit.length, 1, 'the lone forager should go to the sugar trail');
+  assert.equal(mineralTrail.inTransit.length, 0, 'the non-sugar trail should get none of the scarce forager budget');
 });
 
 test('a trail crossing rival-owned territory is marked contested', () => {

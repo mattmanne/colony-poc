@@ -165,6 +165,23 @@ export function resolveTrailsForColony(state, colonyId) {
   // itself — that's the player's paid-for upgrade, not something to erase.
   let foragerBudget = colony.population.forager;
 
+  // Sugar feeds every ant; a protein/mineral trail doesn't. Once starvation
+  // has already crushed the forager count, spending what little budget is
+  // left on a non-sugar trail (just because it happens to sit earlier in the
+  // array — i.e. was laid first) starves sugar income indefinitely and locks
+  // the colony into a death spiral it can never recover from. Feed sugar
+  // trails first so any surviving forager capacity goes toward recovery.
+  const budgetOrder = [...colony.trails].sort((a, b) => {
+    const isSugar = (t) => state.map.tiles[t.path[t.path.length - 1]].resourceNode?.type === 'sugar';
+    return Number(isSugar(b)) - Number(isSugar(a));
+  });
+  const effectiveCapacityByTrailId = new Map();
+  for (const trail of budgetOrder) {
+    const capacity = Math.min(trail.capacity, foragerBudget);
+    effectiveCapacityByTrailId.set(trail.id, capacity);
+    foragerBudget -= capacity;
+  }
+
   for (const trail of colony.trails) {
     trail.contested = trail.path.some((key) => {
       const owner = state.map.tiles[key].owner;
@@ -173,8 +190,7 @@ export function resolveTrailsForColony(state, colonyId) {
 
     const destTile = state.map.tiles[trail.path[trail.path.length - 1]];
     const node = destTile.resourceNode;
-    const effectiveCapacity = Math.min(trail.capacity, foragerBudget);
-    foragerBudget -= effectiveCapacity;
+    const effectiveCapacity = effectiveCapacityByTrailId.get(trail.id);
 
     if (node && node.amount > 0) {
       const pickup = Math.min(effectiveCapacity, node.amount);
