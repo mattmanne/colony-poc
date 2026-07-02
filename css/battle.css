@@ -14,15 +14,22 @@
 #battle-grid {
   position: relative;
   margin: 10px auto;
+  /* Same wood-plank backdrop as the main map (#map in map.css) — the 4px
+     gap the JS layout already leaves between cells (50px spacing, 46px
+     cells) reads as board seams instead of flat black gutters. */
+  background: repeating-linear-gradient(100deg, #4a3520 0px, #4a3520 46px, #3f2c19 48px, #3f2c19 94px);
+  border-radius: 4px;
 }
 
 .battle-cell {
   position: absolute;
   width: 46px;
   height: 46px;
-  border: 1px solid var(--border-softer);
+  border: 1px solid rgba(60, 40, 20, 0.35);
   border-radius: 4px;
-  background: linear-gradient(155deg, #322a1e, #2a2118);
+  /* Soil-toned ground, matching the map's desert tile — the skirmish reads
+     as a zoomed-in patch of the same world instead of a generic dark grid. */
+  background: linear-gradient(155deg, var(--terrain-desert-lt) 0%, var(--terrain-desert-mid) 55%, var(--terrain-desert-dk) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -32,7 +39,8 @@
 }
 
 .battle-cell.obstacle {
-  background: linear-gradient(155deg, #574d3e, #423a2e);
+  /* A boulder blocking the skirmish — the map's "mountains" grey-blue. */
+  background: linear-gradient(155deg, var(--terrain-mountain-lt) 0%, var(--terrain-mountain-mid) 55%, var(--terrain-mountain-dk) 100%);
 }
 
 .battle-unit-defender {
