@@ -115,7 +115,7 @@ function renderMap(state, ui) {
 
     const { x, y } = pixelForHex(tile.q, tile.r, HEX_SIZE);
     const div = document.createElement('div');
-    div.className = `hex ${discovered ? '' : 'hex-fog'} ${ownerClass(tile.owner)}`;
+    div.className = `hex ${discovered ? ownerClass(tile.owner) : 'hex-fog'}`;
     if (key === ui.selectedTile) div.classList.add('hex-selected');
     div.style.left = `${x + OFFSET}px`;
     div.style.top = `${y + OFFSET}px`;
@@ -159,9 +159,16 @@ function renderMap(state, ui) {
 
 // Scrolls the map viewport so the given tile is centered — used to orient
 // the player on load, since the raw hex grid gives no visual starting cue.
+// Sets #map-container's own scroll offset directly rather than calling
+// div.scrollIntoView(), which walks every scrollable ancestor — including
+// the page itself now that a short viewport can make the page taller than
+// the screen — and would scroll the topbar/sidebar out of view too.
 export function centerMapOnTile(tileKey) {
   const div = document.querySelector(`.hex[data-key="${tileKey}"]`);
-  if (div) div.scrollIntoView({ block: 'center', inline: 'center' });
+  const container = document.getElementById('map-container');
+  if (!div || !container) return;
+  container.scrollLeft = div.offsetLeft - container.clientWidth / 2 + div.offsetWidth / 2;
+  container.scrollTop = div.offsetTop - container.clientHeight / 2 + div.offsetHeight / 2;
 }
 
 // In-transit resource pips get persistent DOM elements (keyed by their
@@ -246,8 +253,7 @@ function renderColonyPanel(state) {
     ? `<p class="hint">Unlocked: ${player.traits.map(escapeHtml).join(', ')}</p>`
     : '';
   panel.innerHTML = `
-    <h3>Colony</h3>
-    <p>Population: ${totalPopulation(player)} / ${player.populationCap}</p>
+    <h3>Colony &mdash; ${totalPopulation(player)}/${player.populationCap} pop</h3>
     <p>Workers: ${player.population.worker} &nbsp; Foragers: ${player.population.forager} &nbsp; Soldiers: ${player.population.soldier}</p>
     <div class="actions">
       <button data-action="reassign" data-from="worker" data-to="forager" ${player.population.worker < 1 ? 'disabled' : ''}>Worker &rarr; Forager</button>
@@ -287,19 +293,11 @@ function renderTilePanel(state, ui) {
   }
 
   const player = state.colonies.player;
-  let html = `<h3>Tile (${Number(tile.q)}, ${Number(tile.r)})</h3>`;
-  html += `<p>Terrain: ${escapeHtml(tile.terrain)}</p>`;
-  html += `<p>Owner: ${escapeHtml(tile.owner || 'unclaimed')}</p>`;
-
-  if (tile.chamber) {
-    const chamberDef = CHAMBER_TYPES[tile.chamber.type];
-    const chamberIcon = iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'inline-icon');
-    html += `<p>${chamberIcon} ${escapeHtml(chamberDef ? chamberDef.name : tile.chamber.type)} (${escapeHtml(tile.chamber.ownerColonyId)})</p>`;
-  }
-  if (tile.resourceNode) {
-    const resourceIcon = iconSvg(RESOURCE_ICON_KEYS[tile.resourceNode.type], 'inline-icon');
-    html += `<p>${resourceIcon} ${escapeHtml(tile.resourceNode.type)} — ${Math.floor(tile.resourceNode.amount)}/${tile.resourceNode.maxAmount}</p>`;
-  }
+  // Terrain + owner fold into one compact header (instead of a raw axial
+  // coordinate pair, which is an implementation detail, not player-facing
+  // information) so the action buttons below start closer to the top of a
+  // sidebar that only gets ~45% of a phone screen.
+  let html = `<h3>${escapeHtml(tile.terrain)} tile &mdash; ${escapeHtml(tile.owner || 'unclaimed')}</h3>`;
 
   html += '<div class="actions">';
 
@@ -311,10 +309,11 @@ function renderTilePanel(state, ui) {
     }
   }
 
+  const existingTrail = tile.resourceNode
+    ? player.trails.find((t) => t.path[t.path.length - 1] === key)
+    : null;
   if (tile.resourceNode) {
-    const existingTrail = player.trails.find((t) => t.path[t.path.length - 1] === key);
     if (existingTrail) {
-      html += `<p>Your trail: capacity ${existingTrail.capacity}, garrison ${existingTrail.garrison}/${MAX_GARRISON}${existingTrail.contested ? ' — <span class="contested">CONTESTED</span>' : ''}</p>`;
       if (existingTrail.capacity < TRAIL_MAX_CAPACITY) {
         html += `<button data-action="upgrade-trail" data-trail-id="${escapeHtml(existingTrail.id)}">Upgrade Capacity (${TRAIL_UPGRADE_COST_MINERAL} mineral)</button>`;
       }
@@ -329,6 +328,20 @@ function renderTilePanel(state, ui) {
   }
 
   html += '</div>';
+
+  if (tile.chamber) {
+    const chamberDef = CHAMBER_TYPES[tile.chamber.type];
+    const chamberIcon = iconSvg(CHAMBER_ICON_KEYS[tile.chamber.type] || 'storage', 'inline-icon');
+    html += `<p>${chamberIcon} ${escapeHtml(chamberDef ? chamberDef.name : tile.chamber.type)} (${escapeHtml(tile.chamber.ownerColonyId)})</p>`;
+  }
+  if (tile.resourceNode) {
+    const resourceIcon = iconSvg(RESOURCE_ICON_KEYS[tile.resourceNode.type], 'inline-icon');
+    html += `<p>${resourceIcon} ${escapeHtml(tile.resourceNode.type)} — ${Math.floor(tile.resourceNode.amount)}/${tile.resourceNode.maxAmount}</p>`;
+    if (existingTrail) {
+      html += `<p>Your trail: capacity ${existingTrail.capacity}, garrison ${existingTrail.garrison}/${MAX_GARRISON}${existingTrail.contested ? ' — <span class="contested">CONTESTED</span>' : ''}</p>`;
+    }
+  }
+
   panel.innerHTML = html;
 }
 

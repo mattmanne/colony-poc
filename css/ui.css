@@ -70,8 +70,10 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-soft);
   color: var(--text-muted);
-  width: 30px;
-  height: 30px;
+  /* 44px meets the ~44x44 CSS-pixel touch-target floor (Apple HIG / Material) —
+     this is a touch-only app, so tap targets shouldn't dip below it. */
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -85,7 +87,8 @@
   background: var(--bg-elevated);
   border: 1px solid var(--border-soft);
   color: var(--text-muted);
-  padding: 6px 10px;
+  padding: 10px 14px;
+  min-height: 44px;
   border-radius: var(--radius-sm);
   font-size: 0.8em;
   flex-shrink: 0;
@@ -183,11 +186,22 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* min-height:0 overrides the flex-item default of min-height:auto, which
+     would otherwise force #main (and #app above it) to grow tall enough to
+     fit #map's full 1000px content instead of letting #map-container clip
+     and scroll it. Deliberately not overflow:hidden — on a short viewport
+     (small phones), #map-container's min-height below can still push #main
+     taller than its flex allocation, and letting that overflow visibly means
+     the page grows and scrolls natively instead of the map being crushed. */
+  min-height: 0;
 }
 
 #map-container {
   flex: 1;
+  /* A floor so the board — the actual interaction surface of the game —
+     never gets crushed by the fixed-height chrome above it on a short
+     viewport (e.g. iPhone SE-class phones). */
+  min-height: 240px;
   overflow: auto;
   background:
     radial-gradient(circle at 30% 20%, rgba(255, 200, 120, 0.03), transparent 60%),
